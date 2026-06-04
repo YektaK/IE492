@@ -10,15 +10,19 @@
 
 ## SUMMARY (Tum Senaryolar)
 
-| scenario   |   n_mahalle |   n_critical |   sum_R_x_C |   sum_coverage |   critical_coverage_sum |   spearman_rho_R_vs_C |    p_value |
-|:-----------|------------:|-------------:|------------:|---------------:|------------------------:|----------------------:|-----------:|
-| Orig       |          17 |            0 |     220.38  |        12.171  |                  0      |              0.248659 | 0.371506   |
-| CA1        |          17 |            5 |     935.621 |        45.5401 |                 20.9098 |              0.671429 | 0.00612777 |
-| CA2        |          17 |            5 |     908.341 |        45.0159 |                 20.5238 |              0.614286 | 0.014834   |
-| CA3        |          17 |            5 |    1142.56  |        52.206  |                 28.573  |              0.546429 | 0.0350667  |
-| CA4        |          17 |            5 |    1201.22  |        54.827  |                 30.0271 |              0.546429 | 0.0350667  |
-| CA5        |          17 |            5 |    1142.56  |        52.206  |                 28.573  |              0.546429 | 0.0350667  |
-| CA6        |          17 |            5 |    1201.22  |        54.827  |                 30.0271 |              0.546429 | 0.0350667  |
+| scenario     |   n_mahalle |   n_critical |   sum_R_x_C |   sum_coverage |   critical_coverage_sum |   spearman_rho_R_vs_C |    p_value |
+|:-------------|------------:|-------------:|------------:|---------------:|------------------------:|----------------------:|-----------:|
+| Orig         |          17 |            0 |     220.38  |        12.171  |                  0      |              0.248659 | 0.371506   |
+| CA1          |          17 |            5 |     935.621 |        45.5401 |                 20.9098 |              0.671429 | 0.00612777 |
+| CA2          |          17 |            5 |     908.341 |        45.0159 |                 20.5238 |              0.614286 | 0.014834   |
+| CA3          |          17 |            5 |    1142.56  |        52.206  |                 28.573  |              0.546429 | 0.0350667  |
+| CA4          |          17 |            5 |    1201.22  |        54.827  |                 30.0271 |              0.546429 | 0.0350667  |
+| CA5          |          17 |            5 |    1142.56  |        52.206  |                 28.573  |              0.546429 | 0.0350667  |
+| CA6          |          17 |            5 |    1201.22  |        54.827  |                 30.0271 |              0.546429 | 0.0350667  |
+| CA7a_g1.0    |          17 |           11 |     935.621 |        45.5401 |                 38.1199 |              0.671429 | 0.00612777 |
+| CA8a_trunc   |          17 |            0 |     853.51  |        39.2339 |                  0      |              0.757143 | 0.00108111 |
+| CA8b_adapt   |          17 |            0 |     677.348 |        35.8025 |                  0      |              0.328571 | 0.23181    |
+| CA8c_twotier |          17 |            0 |     976.315 |        46.3427 |                  0      |              0.703571 | 0.00342434 |
 
 ## Per-Scenario Tablo
 
@@ -175,6 +179,94 @@ Mahalleler R'ye gore azalan sirada. rank_C_desc kucuk = yuksek coverage. diff_R_
 | TURGUT REIS            |      6.9 | False         |       2.48 |   17.13 |            13 |             8 |                5 |
 | MIMAR SINAN            |      3.9 | False         |       0.04 |    0.15 |            14 |            15 |                1 |
 | ADIL                   |      3.4 | False         |       0.27 |    0.91 |            15 |            14 |                1 |
+| TEFERRUC TEPE ORMANI   |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+| SALGAMLI DEVLET ORMANI |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+
+### CA7a_g1.0
+
+| mahalle                |   R_risk | is_critical   |   coverage |   R_x_C |   rank_R_desc |   rank_C_desc |   diff_R_minus_C |
+|:-----------------------|---------:|:--------------|-----------:|--------:|--------------:|--------------:|-----------------:|
+| ABDURRAHMANGAZI        |     34.5 | True          |       3.9  |  134.7  |             1 |             5 |                4 |
+| HAMIDIYE               |     32.7 | True          |       5.66 |  184.97 |             2 |             1 |                1 |
+| MEHMET AKIF            |     31   | True          |       4.78 |  148.1  |             3 |             2 |                1 |
+| AHMET YESEVI           |     19.8 | True          |       2.56 |   50.7  |             4 |             8 |                4 |
+| ORHANGAZI              |     19.5 | True          |       3.86 |   75.36 |             5 |             6 |                1 |
+| BATTALGAZI             |     18.4 | True          |       1.8  |   33.09 |             6 |            13 |                7 |
+| NECIP FAZIL            |     17.6 | True          |       2.28 |   40.1  |             7 |            10 |                3 |
+| YAVUZ SELIM            |     17.2 | True          |       4.15 |   71.46 |             8 |             4 |                4 |
+| FATIH                  |     17   | True          |       4.77 |   81.14 |             9 |             3 |                6 |
+| MECIDIYE               |     15.5 | True          |       1.9  |   29.42 |            10 |            12 |                2 |
+| HASANPASA              |     15.1 | True          |       2.45 |   37.05 |            11 |             9 |                2 |
+| AKSEMSETTIN            |      8.9 | False         |       2.94 |   26.2  |            12 |             7 |                5 |
+| TURGUT REIS            |      6.9 | False         |       2.16 |   14.87 |            13 |            11 |                2 |
+| MIMAR SINAN            |      3.9 | False         |       1.13 |    4.39 |            14 |            15 |                1 |
+| ADIL                   |      3.4 | False         |       1.19 |    4.06 |            15 |            14 |                1 |
+| TEFERRUC TEPE ORMANI   |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+| SALGAMLI DEVLET ORMANI |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+
+### CA8a_trunc
+
+| mahalle                |   R_risk | is_critical   |   coverage |   R_x_C |   rank_R_desc |   rank_C_desc |   diff_R_minus_C |
+|:-----------------------|---------:|:--------------|-----------:|--------:|--------------:|--------------:|-----------------:|
+| ABDURRAHMANGAZI        |     34.5 | False         |       5.1  |  176.02 |             1 |             2 |                1 |
+| HAMIDIYE               |     32.7 | False         |       4.1  |  133.96 |             2 |             3 |                1 |
+| MEHMET AKIF            |     31   | False         |       5.59 |  173.29 |             3 |             1 |                2 |
+| AHMET YESEVI           |     19.8 | False         |       1.99 |   39.39 |             4 |             9 |                5 |
+| ORHANGAZI              |     19.5 | False         |       3.35 |   65.24 |             5 |             5 |                0 |
+| BATTALGAZI             |     18.4 | False         |       1.64 |   30.24 |             6 |            10 |                4 |
+| NECIP FAZIL            |     17.6 | False         |       1.52 |   26.81 |             7 |            12 |                5 |
+| YAVUZ SELIM            |     17.2 | False         |       2.94 |   50.55 |             8 |             6 |                2 |
+| FATIH                  |     17   | False         |       3.48 |   59.11 |             9 |             4 |                5 |
+| MECIDIYE               |     15.5 | False         |       1.53 |   23.77 |            10 |            11 |                1 |
+| HASANPASA              |     15.1 | False         |       2.47 |   37.23 |            11 |             8 |                3 |
+| AKSEMSETTIN            |      8.9 | False         |       2.69 |   23.97 |            12 |             7 |                5 |
+| TURGUT REIS            |      6.9 | False         |       1.1  |    7.57 |            13 |            13 |                0 |
+| MIMAR SINAN            |      3.9 | False         |       0.9  |    3.51 |            14 |            14 |                0 |
+| ADIL                   |      3.4 | False         |       0.84 |    2.85 |            15 |            15 |                0 |
+| TEFERRUC TEPE ORMANI   |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+| SALGAMLI DEVLET ORMANI |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+
+### CA8b_adapt
+
+| mahalle                |   R_risk | is_critical   |   coverage |   R_x_C |   rank_R_desc |   rank_C_desc |   diff_R_minus_C |
+|:-----------------------|---------:|:--------------|-----------:|--------:|--------------:|--------------:|-----------------:|
+| ABDURRAHMANGAZI        |     34.5 | False         |       2.94 |  101.38 |             1 |             5 |                4 |
+| HAMIDIYE               |     32.7 | False         |       5.04 |  164.86 |             2 |             3 |                1 |
+| MEHMET AKIF            |     31   | False         |       3.02 |   93.49 |             3 |             4 |                1 |
+| AHMET YESEVI           |     19.8 | False         |       1.03 |   20.46 |             4 |            12 |                8 |
+| ORHANGAZI              |     19.5 | False         |       2.93 |   57.08 |             5 |             6 |                1 |
+| BATTALGAZI             |     18.4 | False         |       1.07 |   19.74 |             6 |            11 |                5 |
+| NECIP FAZIL            |     17.6 | False         |       1.27 |   22.28 |             7 |            10 |                3 |
+| YAVUZ SELIM            |     17.2 | False         |       1.88 |   32.4  |             8 |             8 |                0 |
+| FATIH                  |     17   | False         |       2.1  |   35.72 |             9 |             7 |                2 |
+| MECIDIYE               |     15.5 | False         |       0.94 |   14.51 |            10 |            13 |                3 |
+| HASANPASA              |     15.1 | False         |       1.79 |   27.07 |            11 |             9 |                2 |
+| AKSEMSETTIN            |      8.9 | False         |       5.43 |   48.35 |            12 |             1 |               11 |
+| TURGUT REIS            |      6.9 | False         |       5.13 |   35.4  |            13 |             2 |               11 |
+| MIMAR SINAN            |      3.9 | False         |       0.87 |    3.39 |            14 |            14 |                0 |
+| ADIL                   |      3.4 | False         |       0.36 |    1.23 |            15 |            15 |                0 |
+| TEFERRUC TEPE ORMANI   |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+| SALGAMLI DEVLET ORMANI |      0   | False         |       0    |    0    |            16 |            16 |                0 |
+
+### CA8c_twotier
+
+| mahalle                |   R_risk | is_critical   |   coverage |   R_x_C |   rank_R_desc |   rank_C_desc |   diff_R_minus_C |
+|:-----------------------|---------:|:--------------|-----------:|--------:|--------------:|--------------:|-----------------:|
+| ABDURRAHMANGAZI        |     34.5 | False         |       5.2  |  179.39 |             1 |             2 |                1 |
+| HAMIDIYE               |     32.7 | False         |       3.91 |  127.85 |             2 |             5 |                3 |
+| MEHMET AKIF            |     31   | False         |       6.96 |  215.82 |             3 |             1 |                2 |
+| AHMET YESEVI           |     19.8 | False         |       2.66 |   52.58 |             4 |             8 |                4 |
+| ORHANGAZI              |     19.5 | False         |       3.5  |   68.29 |             5 |             6 |                1 |
+| BATTALGAZI             |     18.4 | False         |       1.85 |   33.99 |             6 |            12 |                6 |
+| NECIP FAZIL            |     17.6 | False         |       2.22 |   39    |             7 |            10 |                3 |
+| YAVUZ SELIM            |     17.2 | False         |       4.27 |   73.53 |             8 |             4 |                4 |
+| FATIH                  |     17   | False         |       4.59 |   78.11 |             9 |             3 |                6 |
+| MECIDIYE               |     15.5 | False         |       1.24 |   19.28 |            10 |            13 |                3 |
+| HASANPASA              |     15.1 | False         |       2.74 |   41.45 |            11 |             7 |                4 |
+| AKSEMSETTIN            |      8.9 | False         |       2.64 |   23.53 |            12 |             9 |                3 |
+| TURGUT REIS            |      6.9 | False         |       2.12 |   14.64 |            13 |            11 |                2 |
+| MIMAR SINAN            |      3.9 | False         |       1.23 |    4.78 |            14 |            14 |                0 |
+| ADIL                   |      3.4 | False         |       1.2  |    4.08 |            15 |            15 |                0 |
 | TEFERRUC TEPE ORMANI   |      0   | False         |       0    |    0    |            16 |            16 |                0 |
 | SALGAMLI DEVLET ORMANI |      0   | False         |       0    |    0    |            16 |            16 |                0 |
 

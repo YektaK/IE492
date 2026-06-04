@@ -32,6 +32,10 @@ SCEN = [
     ("CA4",   os.path.join(ROOT, "cozum_alternatifi_4_full_reloc_sb/final/Sultanbeyli_Final_Results_CA4.xlsx")),
     ("CA5",   os.path.join(ROOT, "cozum_alternatifi_5_full_reloc_yk/final/Sultanbeyli_Final_Results_CA5.xlsx")),
     ("CA6",   os.path.join(ROOT, "cozum_alternatifi_6_full_reloc_baseline/final/Sultanbeyli_Final_Results_CA6.xlsx")),
+    ("CA7a_g1.0", os.path.join(ROOT, "cozum_alternatifi_7_risk_proportional_coverage/final/Sultanbeyli_Final_Results_CA7.xlsx")),
+    ("CA8a_trunc",  "ca8|cozum_alternatifi_8a_fcm_truncation|results/coverage_per_mahalle.xlsx|Baseline|hard"),
+    ("CA8b_adapt",  "ca8|cozum_alternatifi_8b_fcm_adaptive_sigma|results/coverage_per_mahalle.xlsx|Baseline|hard"),
+    ("CA8c_twotier","ca8|cozum_alternatifi_8c_fcm_two_tier|results/coverage_per_mahalle.xlsx|Baseline|hard"),
 ]
 
 MAHALLE_ORDER = [
@@ -72,10 +76,21 @@ def load_coverage_for_scenario(label, xlsx):
                     target = s
                     break
         if target is None:
+            for s in xl.sheet_names:
+                if "coverage" in str(s).lower():
+                    target = s
+                    break
+        if target is None:
             return None
         df = pd.read_excel(xlsx, sheet_name=target)
     except Exception as e:
         print(f"[HATA] {label}: {e}")
+        return None
+    if "gamma" in df.columns:
+        df = df[df["gamma"] == 0.0].copy()
+    if "use_mevcut" in df.columns:
+        df = df[df["use_mevcut"] == True].copy()
+    if df.empty:
         return None
     df.columns = [_norm(str(c)) for c in df.columns]
     mah_col = "MAHALLE"
@@ -142,6 +157,39 @@ def load_coverage_for_scenario(label, xlsx):
     return out
 
 
+def load_coverage_ca8(folder_rel, rel_path, scen_name, mode_name):
+    full = os.path.join(ROOT, folder_rel, rel_path)
+    if not os.path.exists(full):
+        return None
+    try:
+        df = pd.read_excel(full)
+    except Exception as e:
+        print(f"[HATA] ca8 {folder_rel}: {e}")
+        return None
+    df.columns = [str(c).lower() for c in df.columns]
+    if "mahalle" not in df.columns or "coverage" not in df.columns:
+        return None
+    sub = df.copy()
+    if "scenario" in sub.columns:
+        sub = sub[sub["scenario"].astype(str) == scen_name]
+    if "mode" in sub.columns:
+        sub = sub[sub["mode"].astype(str) == mode_name]
+    if sub.empty:
+        sub = df.copy()
+    out = pd.DataFrame()
+    out["mahalle"] = sub["mahalle"].astype(str).map(_norm)
+    out["R_risk"] = pd.to_numeric(sub["R_risk"] if "R_Risk" in sub.columns else sub.get("r_risk", 0.0), errors="coerce").fillna(0.0)
+    out["is_critical"] = False
+    out["coverage"] = pd.to_numeric(sub["coverage"], errors="coerce").fillna(0.0)
+    out["R_x_C"] = out["R_risk"] * out["coverage"]
+    out = out.set_index("mahalle")
+    out = out.reindex([_norm(m) for m in MAHALLE_ORDER]).reset_index().rename(columns={"index": "mahalle"})
+    out["rank_R_desc"] = out["R_risk"].rank(ascending=False, method="min").astype(int)
+    out["rank_C_desc"] = out["coverage"].rank(ascending=False, method="min").astype(int)
+    out["diff_R_minus_C"] = (out["rank_R_desc"] - out["rank_C_desc"]).abs()
+    return out
+
+
 def compute_monotonicity(df):
     if df is None or len(df) < 3:
         return None
@@ -163,32 +211,42 @@ def main():
     with pd.ExcelWriter(OUT_XLSX, engine="openpyxl") as w:
         summary_rows = []
         for label, xlsx in SCEN:
-            df = load_coverage_for_scenario(label, xlsx)
+            if isinstance(xlsx, str) and xlsx.startswith("ca8|"):
+                _, folder, rel, scen, mode = xlsx.split("|")
+                df = load_coverage_ca8(folder, rel, scen, mode)
+            else:
+                df = load_coverage_for_scenario(label, xlsx)
             if df is None:
                 print(f"[ATLA] {label}: coverage sheet yok -> {xlsx}")
                 continue
             per_scen[label] = df
-            df.to_excel(w, sheet_name=label, index=False)
+            sheet_name = label[:31]
+            df.to_excel(w, sheet_name=sheet_name, index=False)
             mn = compute_monotonicity(df)
             cov_sum = df["coverage"].sum()
             rxc_sum = df["R_x_C"].sum()
-            crit_cov = df.loc[df["is_critical"] == True, "coverage"].sum() if df["is_critical"].dtype == bool else df.loc[df["is_critical"].astype(str).str.lower().isin(["true", "1"]), "coverage"].sum()
+            crit_mask = df["is_critical"].astype(str).str.lower().isin(["true", "1"])
+            crit_cov = df.loc[crit_mask, "coverage"].sum()
             summary_rows.append({
                 "scenario": label,
                 "n_mahalle": len(df),
-                "n_critical": int((df["is_critical"].astype(str).str.lower().isin(["true", "1"])).sum()),
+                "n_critical": int(crit_mask.sum()),
                 "sum_R_x_C": rxc_sum,
                 "sum_coverage": cov_sum,
                 "critical_coverage_sum": crit_cov,
                 "spearman_rho_R_vs_C": mn["spearman_rho"] if mn else None,
                 "p_value": mn["p_value"] if mn else None,
             })
-            print(f"  {label}: rho={mn['spearman_rho'] if mn else 'N/A':.3f}, sum_RxC={rxc_sum:.1f}")
+            rho_str = f"{mn['spearman_rho']:.3f}" if mn else "N/A"
+            print(f"  {label}: rho={rho_str}, sum_RxC={rxc_sum:.1f}")
         sdf = pd.DataFrame(summary_rows)
         sdf.to_excel(w, sheet_name="SUMMARY", index=False)
     print(f"[OK] xlsx: {OUT_XLSX}")
 
-    fig, axes = plt.subplots(7, 1, figsize=(14, 28))
+    n_scen = len(per_scen)
+    fig, axes = plt.subplots(n_scen, 1, figsize=(14, 4 * n_scen))
+    if n_scen == 1:
+        axes = [axes]
     n = 0
     for label, _ in SCEN:
         if label not in per_scen:
@@ -208,9 +266,9 @@ def main():
         ax.set_title(f"{label}: Risk vs Coverage (sorted by R desc)", fontsize=10)
         ax.grid(axis="y", alpha=0.3)
         n += 1
-    for j in range(n, 7):
+    for j in range(n, n_scen):
         axes[j].axis("off")
-    plt.suptitle("Mahalle Risk (R) vs Secim-Coverage (7 Senaryo) - sol: R, sag: Coverage", fontsize=12)
+    plt.suptitle(f"Mahalle Risk (R) vs Secim-Coverage ({n_scen} Senaryo) - sol: R, sag: Coverage", fontsize=12)
     plt.tight_layout(rect=[0, 0, 1, 0.985])
     plt.savefig(OUT_PNG, dpi=120, bbox_inches="tight")
     plt.close()
