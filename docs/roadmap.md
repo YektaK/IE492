@@ -7,7 +7,7 @@
 | # | Geliştirme | Klasör | Durum |
 |---|---|---|---|
 | 1 | Yol kapanma olasılığı | `cozum_alternatifi_2_road_closure/` | **UYGULANACAK** |
-| 2 | Gece-gündüz ayrımı | — | kapsam dışı |
+| 2 | Gece-gündüz ayrımı | — | kapsam dışı (talep hasarlı bina→hane, 24s sabit) |
 | 3 | Maliyet (bütçe) | — | kapsam dışı |
 | 4 | Stokastik talep | — | kapsam dışı |
 | 5 | Çoklu deprem senaryosu | — | kapsam dışı |
