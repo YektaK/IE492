@@ -1,0 +1,12 @@
+{
+  "ca": "CA9b (min 1 + yol kapanma)",
+  "n_sites": 20,
+  "n_residential_mahalles": 15,
+  "constraint": "spatial: her 15 mahallede >= 1 site",
+  "p_access_formula": "P(yol acik) = exp(-0.005 * can_kaybi_proxy * 8)",
+  "mods": [
+    "MEV (12+8)",
+    "NMEV (20)"
+  ],
+  "scenarios": 12
+}

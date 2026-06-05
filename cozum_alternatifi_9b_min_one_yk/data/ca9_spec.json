@@ -1,0 +1,34 @@
+{
+  "n_sites": 20,
+  "n_residential_mahalles": 15,
+  "residential_mahalles": [
+    "ABDURRAHMANGAZI",
+    "ADIL",
+    "AHMET YESEVI",
+    "AKSEMSETTIN",
+    "BATTALGAZI",
+    "FATIH",
+    "HAMIDIYE",
+    "HASANPASA",
+    "MECIDIYE",
+    "MEHMET AKIF",
+    "MIMAR SINAN",
+    "NECIP FAZIL",
+    "ORHANGAZI",
+    "TURGUT REIS",
+    "YAVUZ SELIM"
+  ],
+  "forest_mahalles": [],
+  "missing_from_mevcut_12": [
+    "ADIL",
+    "AHMET YESEVI",
+    "FATIH",
+    "HAMIDIYE",
+    "MECIDIYE"
+  ],
+  "constraint": "for each m in 15 residential mahalle: sum(x_j where mahalle(j)=m) >= 1",
+  "mods": {
+    "MEV": "12 mevcut sabit (x=1), 8 yeni secim",
+    "NMEV": "20 tamamen yeni (12 mevcut cikar)"
+  }
+}
