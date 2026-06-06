@@ -1,340 +1,253 @@
 """
 01_data_prep.py
-Parse all source data into clean xlsx files in output/data/
+Sultanbeyli Konteyner Konum Secimi - VERI HAZIRLIGI
 
-Outputs:
-  output/data/adaylar.xlsx          (141 candidate AYDES sites with full features)
-  output/data/mevcut_12.xlsx        (12 existing AFIS containers with coords)
-  output/data/mahalle_nufus.xlsx    (17 mahalle + population)
-  output/data/mahalle_risk.xlsx     (17 mahalle + Tablo 5-2 casualty data)
+Girdi  : archive/old_output/data/ icindeki 5 orijinal dosya
+Cikti  : data/processed/ altinda 8 temiz xlsx + data/scenarios/ altinda 6 senaryo
+
+Kullanim: python src/01_data_prep.py
 """
-import math
-import re
-import pandas as pd
-import openpyxl
-import zipfile
-import xml.etree.ElementTree as ET
+
+from __future__ import annotations
+
+import os
+import shutil
 from pathlib import Path
 
-ROOT = Path(r"D:\IE492")
-DOCS = ROOT / "docs"
-OUT = ROOT / "output" / "data"
-OUT.mkdir(parents=True, exist_ok=True)
-
-
-def find_file(pattern_substr, ext):
-    """Find a file in DOCS whose name contains pattern_substr (handles Turkish-encoding on Win)."""
-    for p in DOCS.iterdir():
-        if p.suffix.lower() == ext.lower() and pattern_substr.lower() in p.name.lower():
-            return p
-    raise FileNotFoundError(f"No {ext} file matching '{pattern_substr}' in {DOCS}")
-
+import numpy as np
+import pandas as pd
 
 # ---------------------------------------------------------------------------
-# 1. Parse AYDES candidate sites from topsisguncel.xlsx (sheet SULTANBEYLI GUNCEL Liste)
+# 0) YOL TANIMLARI
 # ---------------------------------------------------------------------------
-def parse_adaylar():
-    """
-    The XLSX has merged headers. We read raw cells with openpyxl and re-assemble.
-    Data layout (verified by inspection):
-      Row 0: title  (1 cell, merged)
-      Row 1: 'S.No' | 'AYDES ID' | 'Adi' | 'Il' | 'Ilce' | 'Mahalle' | 'Koordinat' (merged) | ...
-      Row 2: (sub-header) | WGS84 (merged) | (DMS) | ...
-      Row 3: (sub-header) | 'Enlem' | 'Boylam' | (DMS) | ...
-      Row 4: (sub-header) ...
-      Row 5+: data
-      Last data row = 5+141 = 146 (141 sites, last is row 146)
-    """
-    src = find_file("topsis", ".xlsx")
-    wb = openpyxl.load_workbook(str(src), data_only=True)
-    sheet_name = wb.sheetnames[0]  # first sheet = AYDES list
-    ws = wb[sheet_name]
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+ARCHIVE_DATA = PROJECT_ROOT / "archive" / "old_output" / "data"
+PROCESSED = PROJECT_ROOT / "data" / "processed"
+SCENARIOS = PROJECT_ROOT / "data" / "scenarios"
+RAW_DIRS = [
+    PROJECT_ROOT / "data" / "raw" / "ibb_deprem_raporu",
+    PROJECT_ROOT / "data" / "raw" / "afad_konteyner",
+    PROJECT_ROOT / "data" / "raw" / "toplanma_alanlari",
+    PROJECT_ROOT / "data" / "raw" / "tukik_nufus",
+]
 
-    # The 'S.No' column starts at col A (index 1).
-    # Find first data row by scanning col A
-    data_start = None
-    for r in range(1, ws.max_row + 1):
-        v = ws.cell(r, 1).value
-        if isinstance(v, (int, float)) and v == 1:
-            data_start = r
-            break
-    if data_start is None:
-        raise RuntimeError("Could not locate data start row")
-
-    # Build the explicit column mapping
-    # We need these fields per site:
-    # S_No (col A), AYDES_ID (B), Alan_Adi (C), Il (D), Ilce (E), Mahalle (F),
-    # Enlem (G), Boylam (H),  -- WGS84
-    # Arazi_Kullanimi, Su, WC, Jenerator, AFIS_Konteyner_Sayisi, Kamera, Haberlesme, Oncelik_Derecesi
-    # From the raw read: cols 26..33 are: Arazi_Kullanimi, Su, WC, Jen, AFIS, Kamera, Haberlesme, [col33 empty], Oncelik
-    # So we need to read columns 1-8 (basic + coords) and 26-34 (infrastructure + priority)
-    rows = []
-    for r in range(data_start, ws.max_row + 1):
-        row = {
-            "S_No": ws.cell(r, 1).value,
-            "AYDES_ID": ws.cell(r, 2).value,
-            "Alan_Adi": ws.cell(r, 3).value,
-            "Il": ws.cell(r, 4).value,
-            "Ilce": ws.cell(r, 5).value,
-            "Mahalle": ws.cell(r, 6).value,
-            "Enlem": ws.cell(r, 7).value,
-            "Boylam": ws.cell(r, 8).value,
-            "Arazi_Kullanimi": ws.cell(r, 26).value,
-            "Su": ws.cell(r, 27).value,
-            "WC": ws.cell(r, 28).value,
-            "Jenerator": ws.cell(r, 29).value,
-            "AFIS_Konteyner_Sayisi": ws.cell(r, 30).value,
-            "Kamera": ws.cell(r, 31).value,
-            "Haberlesme": ws.cell(r, 32).value,
-            "Oncelik_Derecesi": ws.cell(r, 34).value,
-        }
-        # Stop if S_No is None or not numeric
-        if not isinstance(row["S_No"], (int, float)):
-            continue
-        rows.append(row)
-
-    df = pd.DataFrame(rows)
-
-    # Cells are already valid UTF-8 with Turkish chars (Ö, ü, İ, etc.).
-    # The '?' in terminal is just a font display issue.
-    for c in ["Mahalle", "Alan_Adi", "Il", "Ilce", "Su", "WC", "Jenerator",
-              "AFIS_Konteyner_Sayisi", "Kamera", "Haberlesme",
-              "Oncelik_Derecesi", "Arazi_Kullanimi"]:
-        df[c] = df[c].astype(str).str.strip()
-    df["Mahalle"] = df["Mahalle"].str.upper().str.strip()
-    df["S_No"] = pd.to_numeric(df["S_No"], errors="coerce").astype("Int64")
-    df["AYDES_ID"] = pd.to_numeric(df["AYDES_ID"], errors="coerce").astype("Int64")
-    df["Enlem"] = pd.to_numeric(df["Enlem"], errors="coerce")
-    df["Boylam"] = pd.to_numeric(df["Boylam"], errors="coerce")
-    # Drop rows with no coords
-    df = df.dropna(subset=["Enlem", "Boylam"]).reset_index(drop=True)
-
-    def to_bin(v):
-        s = str(v).strip().upper()
-        if s in {"VAR", "1 TANE", "1 TANE VAR"}:
-            return 1
-        if s in {"YOK", "", "NAN"}:
-            return 0
-        if "VAR" in s and "YOK" not in s:
-            return 1
-        return 0
-
-    def to_count(v):
-        s = str(v).strip().upper()
-        if s in {"YOK", "", "NAN"}:
-            return 0
-        digits = "".join(ch for ch in s if ch.isdigit())
-        return int(digits) if digits else 0
-
-    df["Su_bin"] = df["Su"].apply(to_bin)
-    df["WC_bin"] = df["WC"].apply(to_bin)
-    df["Jen_bin"] = df["Jenerator"].apply(to_bin)
-    df["Kamera_bin"] = df["Kamera"].apply(to_bin)
-    df["AFIS_count"] = df["AFIS_Konteyner_Sayisi"].apply(to_count)
-
-    df.to_excel(OUT / "adaylar.xlsx", index=False)
-    print(f"[OK] adaylar.xlsx  rows={len(df)}  unique mahalleler={df['Mahalle'].nunique()}")
-    print("     Mahalleler:", sorted(df["Mahalle"].unique().tolist()))
-    return df
-
+# Dizinleri olustur
+for d in [PROCESSED, SCENARIOS, *RAW_DIRS]:
+    d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# 2. Parse 12 existing AFIS containers from KEP EK-3 docx
+# 1) ORJINAL VERIYI OKU
 # ---------------------------------------------------------------------------
-def parse_mevcut_12():
-    src = find_file("AF", ".docx")
-    # Use python-docx to extract table cells directly
-    from docx import Document
-    d = Document(str(src))
-    rows = []
-    for t in d.tables:
-        for r in t.rows:
-            cells = [c.text.strip() for c in r.cells]
-            rows.append(cells)
+print("[1/6] Orijinal veriler okunuyor...")
 
-    # Manually curated from the docx (verified container numbers 218,220,225,395-405,477-498)
-    known = [
-        {"container_no": 477, "mahalle": "MIMAR SINAN", "adres": "Turk Hava Kurumu Gazi Ortaokulu",
-         "aydes_match_sira": 108, "approx_source": "AYDES_match"},
-        {"container_no": 218, "mahalle": "ABDURRAHMANGAZI", "adres": "Aydos Kalesi Guvenlik Yani",
-         "aydes_match_sira": 84, "approx_source": "AYDES_match"},
-        {"container_no": 220, "mahalle": "TURGUT REIS", "adres": "Polis Karakolu / Eski Emniyet",
-         "aydes_match_sira": None, "approx_lat": 40.9660, "approx_lon": 29.2762,
-         "approx_source": "reverse_geocode_Turgut_Reis_police"},
-        {"container_no": 479, "mahalle": "BATTALGAZI", "adres": "Sultan Korosu Acik Otoparki",
-         "aydes_match_sira": None, "approx_lat": 40.9876, "approx_lon": 29.2866,
-         "approx_source": "reverse_geocode_Sultan_Korosu"},
-        {"container_no": 498, "mahalle": "BATTALGAZI", "adres": "Sultanbeyli Meslek ve Teknik Anadolu Lisesi",
-         "aydes_match_sira": 51, "approx_source": "AYDES_match"},
-        {"container_no": 396, "mahalle": "HASANPASA", "adres": "Husnu M. Ozyegin Anadolu Lisesi",
-         "aydes_match_sira": 68, "approx_source": "AYDES_match"},
-        {"container_no": 225, "mahalle": "ABDURRAHMANGAZI", "adres": "Saygi Hastanesi Otoparki",
-         "aydes_match_sira": None, "approx_lat": 40.9699, "approx_lon": 29.2579,
-         "approx_source": "reverse_geocode_Saygi_Hastanesi"},
-        {"container_no": 482, "mahalle": "MEHMET AKIF", "adres": "Kiz Anadolu Imam Hatip Lisesi",
-         "aydes_match_sira": 85, "approx_source": "AYDES_match"},
-        {"container_no": 405, "mahalle": "AKSEMSETTIN", "adres": "Aksemsettin Ilk ve Ortaogretim Okulu",
-         "aydes_match_sira": 26, "approx_source": "AYDES_match"},
-        {"container_no": 401, "mahalle": "ORHANGAZI", "adres": "Orhangazi Imam-Hatip Ortaokulu",
-         "aydes_match_sira": 121, "approx_source": "AYDES_match"},
-        {"container_no": 403, "mahalle": "NECIP FAZIL", "adres": "Cumhuriyet Ilkokulu ve Ortaogretim Okulu",
-         "aydes_match_sira": 115, "approx_source": "AYDES_match"},
-        {"container_no": 395, "mahalle": "YAVUZ SELIM", "adres": "Yasar Pasali Ilkokulu",
-         "aydes_match_sira": 141, "approx_source": "AYDES_match"},
-    ]
+adaylar = pd.read_excel(ARCHIVE_DATA / "adaylar.xlsx")
+mevcut = pd.read_excel(ARCHIVE_DATA / "mevcut_12.xlsx")
+nufus = pd.read_excel(ARCHIVE_DATA / "mahalle_nufus.xlsx")
+risk = pd.read_excel(ARCHIVE_DATA / "mahalle_risk.xlsx")
+barinma = pd.read_excel(ARCHIVE_DATA / "mahalle_barinma_ihtiyaci.xlsx")
 
-    df_aday = pd.read_excel(OUT / "adaylar.xlsx")
-    out_rows = []
-    for r in known:
-        if r["aydes_match_sira"] is not None:
-            match = df_aday[df_aday["S_No"] == r["aydes_match_sira"]]
-            if len(match) == 1:
-                lat = float(match.iloc[0]["Enlem"])
-                lon = float(match.iloc[0]["Boylam"])
-                source = f"AYDES_Sira_{r['aydes_match_sira']}"
-            else:
-                lat = r["approx_lat"]
-                lon = r["approx_lon"]
-                source = "reverse_geocode_fallback"
-        else:
-            lat = r["approx_lat"]
-            lon = r["approx_lon"]
-            source = r["approx_source"]
-        out_rows.append({
-            "container_no": r["container_no"],
-            "mahalle": r["mahalle"].upper(),
-            "adres": r["adres"],
-            "enlem": lat,
-            "boylam": lon,
-            "coord_source": source,
-        })
-
-    df = pd.DataFrame(out_rows)
-    df.to_excel(OUT / "mevcut_12.xlsx", index=False)
-    print(f"[OK] mevcut_12.xlsx  rows={len(df)}")
-    return df
-
+print(f"  adaylar   : {adaylar.shape}")
+print(f"  mevcut    : {mevcut.shape}")
+print(f"  nufus     : {nufus.shape}")
+print(f"  risk      : {risk.shape}")
+print(f"  barinma   : {barinma.shape}")
 
 # ---------------------------------------------------------------------------
-# 3. Parse Sultanbeyli Nufus Verileri-2024 docx
+# 2) MAHALLE MERKEZ KOORDINATLARI (turetilmis)
 # ---------------------------------------------------------------------------
-def parse_nufus():
-    # File is named "Sultanbeyli Ilcesi Nufus Verileri-2024 1.docx" (Turkish chars on disk)
-    src = None
-    for p in DOCS.iterdir():
-        if p.suffix.lower() == ".docx" and "Nufus" in p.name:
-            src = p
-            break
-    if src is None:
-        # Try matching 'l' + 'i' + 'e' (Ilcesi)
-        for p in DOCS.iterdir():
-            if p.suffix.lower() == ".docx" and ("fus" in p.name or "Nufu" in p.name or "Veri" in p.name):
-                src = p
-                break
-    if src is None:
-        raise FileNotFoundError("Nufus docx not found")
-    from docx import Document
-    d = Document(str(src))
-    rows = []
-    for t in d.tables:
-        for r in t.rows:
-            cells = [c.text.strip() for c in r.cells]
-            rows.append(cells)
+print("[2/6] Mahalle merkez koordinatlari hesaplaniyor...")
 
-    known_mahalleler = {"ABDURRAHMANGAZI", "ADIL", "AHMET YESEVI", "AKSEMSETTIN", "BATTALGAZI",
-                        "FATIH", "HAMIDIYE", "HASANPASA", "MECIDIYE", "MEHMET AKIF", "MIMAR SINAN",
-                        "NECIP FAZIL", "ORHANGAZI", "TURGUT REIS", "YAVUZ SELIM",
-                        "SALGAMLI DEVLET ORMANI", "TEFERRUC TEPE ORMANI"}
+# Her mahalle icin aday parsel koordinatlarinin ortalamasi
+centroids = (
+    adaylar.groupby("Mahalle")[["Enlem", "Boylam"]]
+    .mean()
+    .reset_index()
+    .rename(columns={"Enlem": "lat", "Boylam": "lon"})
+)
 
-    parsed = {}
-    for r in rows:
-        if not r:
-            continue
-        first = r[0].strip().upper()
-        if first in known_mahalleler:
-            # Find the largest integer in the row (population)
-            best = None
-            for cell in r[1:]:
-                # try matching "12 345" or "12,345" or "12345"
-                m = re.search(r"\d[\d\.\,\s]*", cell)
-                if m:
-                    raw = m.group().replace(".", "").replace(",", "").replace(" ", "").replace("\u00a0", "")
-                    try:
-                        v = int(raw)
-                        if v > 100:  # filter out small numbers like 5, 17 etc.
-                            if best is None or v > best:
-                                best = v
-                    except ValueError:
-                        pass
-            if best is not None:
-                parsed[first] = best
+# Eger mevcut konteyner bir mahallede yoksa, onu da ekle (sentinel)
+mevcut_extra = mevcut.groupby("mahalle")[["enlem", "boylam"]].mean().reset_index()
+mevcut_extra.columns = ["Mahalle", "lat", "lon"]
+centroids = (
+    pd.concat([centroids, mevcut_extra], ignore_index=True)
+    .drop_duplicates(subset=["Mahalle"])
+    .reset_index(drop=True)
+)
 
-    # Hardcoded fallback (TUIK ADNKS 2024 + Belediye yayinlari) for any missing
-    fallback = {
-        "ABDURRAHMANGAZI": 41200, "ADIL": 23800, "AHMET YESEVI": 28600,
-        "AKSEMSETTIN": 16400, "BATTALGAZI": 26900, "FATIH": 19300,
-        "HAMIDIYE": 22700, "HASANPASA": 18300, "MECIDIYE": 25400,
-        "MEHMET AKIF": 31100, "MIMAR SINAN": 32600, "NECIP FAZIL": 21200,
-        "ORHANGAZI": 19400, "TURGUT REIS": 16900, "YAVUZ SELIM": 22100,
-        "SALGAMLI DEVLET ORMANI": 0, "TEFERRUC TEPE ORMANI": 0,
-    }
-    for k, v in fallback.items():
-        if k not in parsed:
-            parsed[k] = v
+# Normalize mahalle isimleri (buyuk harf, tirnak temizligi)
+centroids["Mahalle"] = centroids["Mahalle"].str.strip().str.upper()
+centroids = centroids.rename(columns={"Mahalle": "mahalle"})
+for df in [nufus, risk, barinma]:
+    df["mahalle"] = df["mahalle"].str.strip().str.upper()
 
-    df = pd.DataFrame([{"mahalle": k, "nufus_2024": v} for k, v in parsed.items()])
-    df["source"] = df["mahalle"].apply(
-        lambda m: "docx" if (m in parsed and parsed[m] != fallback.get(m)) else "TUIK_2024_fallback"
+# Tum mahalleler
+tum_mahalleler = sorted(set(nufus["mahalle"]) | set(risk["mahalle"]) | set(barinma["mahalle"]))
+print(f"  {len(tum_mahalleler)} mahalle tespit edildi")
+print(f"  centroid'lerde mahalle sayisi: {centroids['mahalle'].nunique()}")
+
+# Centroid bulunmayan mahalleler icin ortalama ile doldur
+if centroids["mahalle"].nunique() < len(tum_mahalleler):
+    mean_lat = centroids["lat"].mean()
+    mean_lon = centroids["lon"].mean()
+    eksik = [m for m in tum_mahalleler if m not in centroids["mahalle"].values]
+    for m in eksik:
+        centroids = pd.concat(
+            [centroids, pd.DataFrame([{"mahalle": m, "lat": mean_lat, "lon": mean_lon}])],
+            ignore_index=True,
+        )
+    print(f"  {len(eksik)} mahalle icin ortalama koordinat kullanildi")
+
+centroids.to_excel(PROCESSED / "mahalle_centroids.xlsx", index=False)
+
+# ---------------------------------------------------------------------------
+# 3) p_access_road (parsel bazli) - sentetik ama gercekci
+# ---------------------------------------------------------------------------
+print("[3/6] p_access_road (parsel bazli) uretiliyor...")
+
+np.random.seed(42)
+n = len(adaylar)
+
+# Mahalle ortalama erisebilirligi (0.55 - 0.95 arasi)
+mahalle_puanlari = centroids.set_index("mahalle")[["lat", "lon"]].apply(
+    lambda r: 0.55 + 0.40 * (
+        (r["lat"] - centroids["lat"].min())
+        / (centroids["lat"].max() - centroids["lat"].min() + 1e-9)
+    ),
+    axis=1,
+)
+mahalle_puanlari = mahalle_puanlari.clip(0.55, 0.95).to_dict()
+
+# Parsel bazli: mahalle ortalamasi + gaussian gurultu
+p_access = []
+for _, row in adaylar.iterrows():
+    base = mahalle_puanlari.get(row["Mahalle"].strip().upper(), 0.70)
+    val = np.clip(base + np.random.normal(0, 0.05), 0.30, 0.99)
+    p_access.append(val)
+adaylar["p_access_road"] = p_access
+adaylar.to_excel(PROCESSED / "adaylar_140.xlsx", index=False)
+print(f"  p_access_road: mean={np.mean(p_access):.3f}, std={np.std(p_access):.3f}")
+
+# ---------------------------------------------------------------------------
+# 4) p_road_open (mahalle bazli) - sentetik
+# ---------------------------------------------------------------------------
+print("[4/6] p_road_open (mahalle bazli) uretiliyor...")
+
+p_road = []
+for m in tum_mahalleler:
+    base = mahalle_puanlari.get(m, 0.70)
+    val = np.clip(base + np.random.normal(0, 0.05), 0.40, 0.99)
+    p_road.append({"mahalle": m, "p_road_open": val})
+
+p_road_df = pd.DataFrame(p_road)
+p_road_df.to_excel(PROCESSED / "p_road_open.xlsx", index=False)
+print(f"  {len(p_road_df)} mahalle icin p_road_open")
+
+# ---------------------------------------------------------------------------
+# 5) MAHALLE DUZEYINDE TEMIZ TABLOLAR
+# ---------------------------------------------------------------------------
+print("[5/6] Mahalle duzeyinde temiz tablolar yaziliyor...")
+
+nufus_clean = nufus[["mahalle", "nufus_2024"]].copy()
+nufus_clean.to_excel(PROCESSED / "mahalle_nufus.xlsx", index=False)
+
+risk_clean = risk[["mahalle", "risk_score"]].copy()
+risk_clean["risk_score"] = risk_clean["risk_score"].astype(float)
+risk_clean.to_excel(PROCESSED / "mahalle_risk.xlsx", index=False)
+
+barinma_clean = barinma[["mahalle", "hane_ihtiyaci"]].copy()
+barinma_clean.to_excel(PROCESSED / "mahalle_barinma.xlsx", index=False)
+
+mevcut_clean = mevcut[["container_no", "mahalle", "enlem", "boylam"]].copy()
+mevcut_clean["mahalle"] = mevcut_clean["mahalle"].str.strip().str.upper()
+mevcut_clean.to_excel(PROCESSED / "mevcut_12.xlsx", index=False)
+
+# ---------------------------------------------------------------------------
+# 6) KRITER MATRISI (140 parsel x 4 kriter)
+# ---------------------------------------------------------------------------
+print("[6/6] Kriter matrisi olusturuluyor...")
+
+adaylar["Mahalle"] = adaylar["Mahalle"].str.strip().str.upper()
+nufus_idx = nufus_clean.set_index("mahalle")["nufus_2024"].to_dict()
+risk_idx = risk_clean.set_index("mahalle")["risk_score"].to_dict()
+barinma_idx = barinma_clean.set_index("mahalle")["hane_ihtiyaci"].to_dict()
+
+# C1: hasar riski (mahalleden)
+adaylar["C1_hasar_risk"] = adaylar["Mahalle"].map(risk_idx).fillna(risk_clean["risk_score"].mean())
+
+# C2: lojistik kompozit (su+wc+jen+kamera) -> 0-1 normalize
+infra_cols = ["Su_bin", "WC_bin", "Jen_bin", "Kamera_bin"]
+adaylar["C2_lojistik"] = adaylar[infra_cols].mean(axis=1)
+
+# C3: bosluk mesafesi (en yakin mevcut konteynere metre)
+def haversine_m(lat1, lon1, lat2, lon2):
+    R = 6_371_000.0
+    p1, p2 = np.radians(lat1), np.radians(lat2)
+    dp = np.radians(lat2 - lat1)
+    dl = np.radians(lon2 - lon1)
+    a = np.sin(dp / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
+    return 2 * R * np.arcsin(np.sqrt(a))
+
+
+mesafeler = np.zeros(len(adaylar))
+for i, row in adaylar.iterrows():
+    d = haversine_m(
+        row["Enlem"], row["Boylam"],
+        mevcut_clean["enlem"].values, mevcut_clean["boylam"].values,
     )
-    df.to_excel(OUT / "mahalle_nufus.xlsx", index=False)
-    print(f"[OK] mahalle_nufus.xlsx  rows={len(df)}  total_pop={df['nufus_2024'].sum():,}")
-    return df
+    mesafeler[i] = d.min()
+adaylar["C3_bosluk_m"] = mesafeler
 
+# 0-1 normalize (max mesafeye oranla)
+max_m = adaylar["C3_bosluk_m"].max()
+adaylar["C3_bosluk_norm"] = adaylar["C3_bosluk_m"] / max_m
 
-# ---------------------------------------------------------------------------
-# 4. Tablo 5-2: IBB Deprem Raporu (Mw=7.5) Mahalle Bazli Can Kaybi / Yaralanma
-# ---------------------------------------------------------------------------
-def parse_tablo_5_2():
-    """Source: image of Tablo 5-2 (manually transcribed & verified)."""
-    data = [
-        ("ABDURRAHMANGAZI", 11, 7, 36, 85),
-        ("ADIL",            0,  0,  5,  19),
-        ("AHMET YESEVI",    6,  2,  23, 57),
-        ("AKSEMSETTIN",     2,  1,  11, 30),
-        ("BATTALGAZI",      4,  2,  23, 63),
-        ("FATIH",           5,  2,  20, 48),
-        ("HAMIDIYE",       10,  6,  36, 83),
-        ("HASANPASA",       4,  3,  17, 42),
-        ("MECIDIYE",        4,  3,  17, 46),
-        ("MEHMET AKIF",    10,  5,  34, 78),
-        ("MIMAR SINAN",     0,  0,  5,  24),
-        ("NECIP FAZIL",     5,  2,  21, 51),
-        ("ORHANGAZI",       6,  3,  22, 51),
-        ("SALGAMLI DEVLET ORMANI", 0, 0, 0, 0),
-        ("TEFERRUC TEPE ORMANI",   0, 0, 0, 0),
-        ("TURGUT REIS",     1,  0,  10, 29),
-        ("YAVUZ SELIM",     5,  2,  20, 50),
-    ]
-    df = pd.DataFrame(data, columns=["mahalle", "can_kaybi", "agir_yarali",
-                                      "hastanede_tedavi", "hafif_yarali"])
-    df["risk_score"] = (
-        1.0 * df["can_kaybi"]
-        + 0.6 * df["agir_yarali"]
-        + 0.3 * df["hastanede_tedavi"]
-        + 0.1 * df["hafif_yarali"]
-    )
-    df.to_excel(OUT / "mahalle_risk.xlsx", index=False)
-    print(f"[OK] mahalle_risk.xlsx  rows={len(df)}  total_risk={df['risk_score'].sum():.1f}")
-    return df
+# C4: barinma talebi (mahalleden)
+adaylar["C4_barinma"] = adaylar["Mahalle"].map(barinma_idx).fillna(barinma_clean["hane_ihtiyaci"].mean())
 
+criteria = adaylar[
+    ["S_No", "AYDES_ID", "Mahalle", "Enlem", "Boylam",
+     "C1_hasar_risk", "C2_lojistik", "C3_bosluk_m", "C3_bosluk_norm", "C4_barinma",
+     "p_access_road"]
+].copy()
+criteria.to_excel(PROCESSED / "criteria_matrix.xlsx", index=False)
+print(f"  criteria_matrix: {criteria.shape}")
 
 # ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    print("=" * 60)
-    print("STEP 1: DATA PREPARATION")
-    print("=" * 60)
-    parse_adaylar()
-    parse_mevcut_12()
-    parse_nufus()
-    parse_tablo_5_2()
-    print("Done.")
+# 7) 2 SENARYO TANIMI (sadelesmis)
+# ---------------------------------------------------------------------------
+# Kavramsal not (rapora yazilacak):
+# - Barinma ihtiyaci = yapisal/hasar gostergesi (yikilacak bina / mudahale edilecek hane)
+#   Zamansal degildir; gece/gunduz bagimsiz.
+# - Afet ani / afet sonrasi senaryolari problem kapsaminda degil (statik konum secimi).
+# - Yol kapanmasi: mu_ij_eff = mu_ij * Q_i
+#   Talebi AZALTMAZ, uzaktan gelen konteynerlerin etkisini AZALTIR,
+#   bu nedenle konteyner YAKIN olmali (kapanma riski yuksek mahallelerde).
+# ---------------------------------------------------------------------------
+print("[+] 2 senaryo tanimi yaziliyor...")
+
+scenarios = pd.DataFrame([
+    {
+        "kod": "A",
+        "ad": "Referans",
+        "aciklama": "Yol kapanmasi yok (Q_i=1.0). Standart MCLP/MILP problemi.",
+        "Q_i": 1.0,
+    },
+    {
+        "kod": "B",
+        "ad": "Yol_Kapanmasi",
+        "aciklama": "mu_ij_eff = mu_ij * Q_i. Yol kapanmasi uzak konteynerlerin etkisini azaltir, lokal konumlanmayi one cikarir.",
+        "Q_i": "gercek",
+    },
+])
+scenarios.to_excel(SCENARIOS / "scenarios.xlsx", index=False)
+
+print()
+print("=" * 60)
+print("VERI HAZIRLIGI TAMAMLANDI")
+print("=" * 60)
+print(f"data/processed/")
+for f in sorted(PROCESSED.iterdir()):
+    print(f"  - {f.name}")
+print(f"data/scenarios/")
+for f in sorted(SCENARIOS.iterdir()):
+    print(f"  - {f.name}")

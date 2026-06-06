@@ -1,0 +1,43 @@
+{
+  "sigma_m": 800.0,
+  "d_50_m": 941.9,
+  "d_10_m": 1716.8,
+  "n_aday": 140,
+  "n_mevcut": 12,
+  "n_mahalle": 15,
+  "mu_aday": {
+    "min": 0.0,
+    "max": 0.9984,
+    "mean": 0.123,
+    "std": 0.2346
+  },
+  "mu_mevcut": {
+    "min": 0.0,
+    "max": 0.9887,
+    "mean": 0.1287,
+    "std": 0.234
+  },
+  "Q_i": {
+    "min": 0.5276,
+    "max": 0.939,
+    "mean": 0.7129,
+    "std": 0.107
+  },
+  "mahalleler": [
+    "ABDURRAHMANGAZI",
+    "ADIL",
+    "AHMET YESEVI",
+    "AKSEMSETTIN",
+    "BATTALGAZI",
+    "FATIH",
+    "HAMIDIYE",
+    "HASANPASA",
+    "MECIDIYE",
+    "MEHMET AKIF",
+    "MIMAR SINAN",
+    "NECIP FAZIL",
+    "ORHANGAZI",
+    "TURGUT REIS",
+    "YAVUZ SELIM"
+  ]
+}

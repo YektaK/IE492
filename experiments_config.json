@@ -1,0 +1,103 @@
+{
+  "_comment": "Experiment configurations for Sultanbeyli container optimization",
+  "_dimensions": {
+    "scenario": ["A=Referans", "B=Yol_Kapanmasi"],
+    "sigma": ["800=standard", "800_300=two-tier"],
+    "beta": "quality weight (0..1)",
+    "K": "number of new containers",
+    "truncate": "mu < threshold -> 0 (0=off)",
+    "no_mevcut": "ignore existing containers"
+  },
+  "experiments": [
+    {
+      "name": "Baseline_SA",
+      "scenario": "A",
+      "sigma": "800",
+      "beta": 0.30,
+      "K": 8,
+      "truncate": 0,
+      "no_mevcut": false,
+      "steps": ["05_ip", "08_lscp", "11_lexicographic", "13_eps_constraint", "14_single_stage", "15_compromise"]
+    },
+    {
+      "name": "RoadClosure_SB",
+      "scenario": "B",
+      "sigma": "800",
+      "beta": 0.30,
+      "K": 8,
+      "truncate": 0,
+      "no_mevcut": false,
+      "steps": ["05_ip", "08_lscp", "11_lexicographic", "13_eps_constraint", "14_single_stage", "15_compromise"]
+    },
+    {
+      "name": "TwoTier_SA",
+      "scenario": "A",
+      "sigma": "800_300",
+      "beta": 0.30,
+      "K": 8,
+      "truncate": 0,
+      "no_mevcut": false,
+      "steps": ["05_ip", "08_lscp", "11_lexicographic", "13_eps_constraint", "14_single_stage"]
+    },
+    {
+      "name": "TwoTier_SB",
+      "scenario": "B",
+      "sigma": "800_300",
+      "beta": 0.30,
+      "K": 8,
+      "truncate": 0,
+      "no_mevcut": false,
+      "steps": ["05_ip", "08_lscp", "11_lexicographic", "13_eps_constraint", "14_single_stage"]
+    },
+    {
+      "name": "BetaGrid_SA",
+      "scenario": "A",
+      "sigma": "800",
+      "K": 8,
+      "truncate": 0,
+      "no_mevcut": false,
+      "_beta_sweep": [0, 0.10, 0.20, 0.30, 0.50, 0.70, 1.0],
+      "steps": ["05_ip"]
+    },
+    {
+      "name": "FullReloc_SA",
+      "scenario": "A",
+      "sigma": "800",
+      "beta": 0.30,
+      "K": 20,
+      "truncate": 0,
+      "no_mevcut": true,
+      "steps": ["05_ip"]
+    },
+    {
+      "name": "FullReloc_SB",
+      "scenario": "B",
+      "sigma": "800",
+      "beta": 0.30,
+      "K": 20,
+      "truncate": 0,
+      "no_mevcut": true,
+      "steps": ["05_ip"]
+    },
+    {
+      "name": "Truncation_SA",
+      "scenario": "A",
+      "sigma": "800",
+      "beta": 0.30,
+      "K": 8,
+      "truncate": 0.20,
+      "no_mevcut": false,
+      "steps": ["05_ip"]
+    },
+    {
+      "name": "Truncation_SB",
+      "scenario": "B",
+      "sigma": "800",
+      "beta": 0.30,
+      "K": 8,
+      "truncate": 0.20,
+      "no_mevcut": false,
+      "steps": ["05_ip"]
+    }
+  ]
+}

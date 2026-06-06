@@ -1,0 +1,64 @@
+﻿=== ALL TABLES ===
+
+--- Table 0 (7x2) ---
+  R0: ['Preferences', 'Numerical Equivalent']
+  R1: ['Two criteria having equal importance', '1']
+  R2: ['One criterion being slightly more important than the other', '3']
+  R3: ['One criterion being more important than the other', '5']
+  R4: ['One criterion being significantly more important than the other', '7']
+  R5: ['One criterion being absolutely important than the other', '9']
+  R6: ['Intermediate values', '2, 4, 6, 8']
+
+--- Table 1 (6x6) ---
+  R0: ['Criterion', 'C1', '', 'C2', 'C3', 'C4']
+  R1: ['C1:PopulationDensity', '1', '', '2', '3', '4']
+  R2: ['C2: Earthquake Risk Score', '1/2', '', '1', '2', '3']
+  R3: ['C3: Access Distance', '1/3', '', '1/2', '1', '2']
+  R4: ['C4: Transportation Infrastructure', '1/4', '', '1/3', '1/2', '1']
+  R5: ['Column Total', '2.08', '', '3.83', '6.50', '10.00']
+
+--- Table 2 (6x7) ---
+  R0: ['Criterion', 'C1', 'C2', 'C3', 'C4', 'Weight wßÁó', '%']
+  R1: ['C1:PopulationDensity', '0.480', '0.522', '0.462', '0.400', '0.4658', '46.6']
+  R2: ['C2: Earthquake Risk Score', '0.240', '0.261', '0.308', '0.300', '0.2771', '27.7']
+  R3: ['C3: Access Distance', '0.160', '0.130', '0.154', '0.200', '0.1611', '16.1']
+  R4: ['C4: Transportation Infrastructure', '0.120', '0.087', '0.077', '0.100', '0.0960', '9.6']
+  R5: ['TOTAL', '2.08', '3.83', '6.50', '10.00', '1,0000', '100%']
+
+--- Table 3 (2x8) ---
+  R0: ['n=1', 'n=2', 'n=3', 'n=4', 'n=5', 'n=6', 'n=7', 'n=8']
+  R1: ['0,00', '0,00', '0,58', '0,90', '1,12', '1,24', '1,32', '1,41']
+
+--- Table 4 (6x6) ---
+  R0: ['Criterion', 'A┬Àw ßÁó', 'wßÁó', '╬╗ßÁó = (A┬Àw)ßÁó / wßÁó', 'Formula', 'Value']
+  R1: ['C1:PopulationDensity', '1.887', '0.4658', '1.887 / 0.4658', '0.4658', '4.05']
+  R2: ['C2: Earthquake Risk Score', '1.120', '0.2771', '1.120 / 0.2771', '0.2771', '4.04']
+  R3: ['C3: Access Distance', '0.647', '0.1611', '0.647 / 0.1611', '0.1611', '4.02']
+  R4: ['C4: Transportation Infrastructure', '0.385', '0.0960', '0.385 / 0.0960', '0.0960', '4.02']
+  R5: ['╬╗ÔéİÔéÉÔéô (Average)', '', '', '', '(4.05 + 4.04 + 4.02 + 4.02) / 4', '4.0310']
+
+--- Table 5 (6x3) ---
+  R0: ['Parameter', 'Formula', 'Value']
+  R1: ['Number of Criteria (n)', 'ÔÇö', '4']
+  R2: ['╬╗ÔéİÔéÉÔéô', '╬ú ╬╗ßÁó / n', '4.0310']
+  R3: ['Consistency Indicator (CI)', '(╬╗ÔéİÔéÉÔéô ÔêÆ n) / (n ÔêÆ 1)', '0.0103']
+  R4: ['Randomness Index (RI, n=4)', 'Saaty Tablosundan', '0,90']
+  R5: ['Consistency Rate (CR)', 'CI / RI', '0.0115 < 0,10  Ô£ô']
+
+--- Table 6 (16x8) ---
+  R0: ['S─▒ra', 'Alan Ad─▒', 'Mahalle', 'v1 (N├╝fus)', 'v2 (Deprem)', 'S_plus', 'S_minus', 'CC_i']
+  R1: ['1', '┼Şehit Erdem Diker ─░mam Hatip Ortaokulu Bah├ğesi', 'AHMET YESEV─░', '0.05536', '0.02304', '0.0089', '0.0442', '0.8331']
+  R2: ['2', 'Aydos Park─▒', 'ABDURRAHMANGAZ─░', '0.04738', '0.02962', '0.0088', '0.0439', '0.8331']
+  R3: ['3', 'Nil├╝fer Hatun K─▒z Anadolu ─░mam Hatip Lisesi', 'AHMET YESEV─░', '0.05536', '0.02304', '0.0093', '0.0438', '0.8247']
+  R4: ['4', 'Ya┼şar Pa┼şal─▒ ─░lkokulu Bah├ğesi', 'YAVUZ SEL─░M', '0.04785', '0.02304', '0.0100', '0.0428', '0.8109']
+  R5: ['5', 'Abdurrahmangazi Cami ├ûn├╝ Toplanma Alan─▒', 'ABDURRAHMANGAZ─░', '0.04738', '0.02962', '0.0101', '0.0419', '0.8057']
+  R6: ['6', 'H├╝sn├╝ M. ├ûzye─şin Anadolu Lisesi Bah├ğesi', 'HASANPA┼ŞA', '0.04975', '0.01975', '0.0114', '0.0434', '0.7926']
+  R7: ['7', 'Ahmet Yesevi Park─▒', 'AHMET YESEV─░', '0.05536', '0.02304', '0.0122', '0.0416', '0.7725']
+  R8: ['8', 'G├╝lbahar Hatun Anaokulu Bah├ğesi', 'HASANPA┼ŞA', '0.04975', '0.01975', '0.0124', '0.0398', '0.7624']
+  R9: ['9', 'Anafartalar ─░mam Hatip Ortaokulu Bah├ğesi', 'FAT─░H', '0.04661', '0.02304', '0.0123', '0.0381', '0.7562']
+  R10: ['10', 'Sultanbeyli G├Âlet Sosyal Tesis Alan─▒', 'YAVUZ SEL─░M', '0.04785', '0.02304', '0.0125', '0.0384', '0.7544']
+  R11: ['11', 'Fatih Ortaokulu Bah├ğesi', 'FAT─░H', '0.04661', '0.02304', '0.0129', '0.0371', '0.7425']
+  R12: ['12', 'Hasanpa┼şa ─░lkokulu Bah├ğesi', 'HASANPA┼ŞA', '0.04975', '0.01975', '0.0136', '0.0382', '0.7373']
+  R13: ['13', 'Abdurrahmangazi Orman Toplanma Alan─▒', 'ABDURRAHMANGAZ─░', '0.04738', '0.02962', '0.0134', '0.0375', '0.7360']
+  R14: ['14', 'G├Âlet ─░lkokulu Bah├ğesi', 'FAT─░H', '0.04661', '0.02304', '0.0132', '0.0367', '0.7348']
+  R15: ['15', 'Ali Ku┼ş├ğu ─░mam Hatip Ortaokulu Bah├ğesi', 'ABDURRAHMANGAZ─░', '0.04738', '0.02962', '0.0136', '0.0374', '0.7335']
