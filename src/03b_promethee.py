@@ -3,8 +3,12 @@
 Sultanbeyli Konteyner - PROMETHEE II ile aday parsel puanlamasi
 
 3 AHP senaryosu icin ayri ayri Net Flow (phi) hesaplar.
-Girdi  : data/processed/criteria_matrix.xlsx, results/ahp/ahp_weights.xlsx
+Girdi  : data/processed/criteria_matrix.xlsx, results/ahp/ahp_weights_hybrid.xlsx
 Cikti  : results/mcdm/promethee_phi.xlsx (140 parsel x 3 senaryo)
+
+Degisiklikler (Faz 2):
+  1) Ham degerler yerine Faz 1'de uretilen Amplified (power-transform) sutunlari kullanilir.
+  2) Sadece AHP degil, AHP-Entropy hibrit agirliklari kullanilir (w_hyb).
 
 Yontem (PROMETHEE II, Tip V tercih fonksiyonu = V-shape):
   1) j kriterinde a ve b alternatifleri icin d_j(a,b) = f_j(a) - f_j(b)
@@ -17,8 +21,6 @@ Yontem (PROMETHEE II, Tip V tercih fonksiyonu = V-shape):
   4) Leaving flow: phi+(a) = (1/(n-1)) Σ_b pi(a,b)
      Entering flow: phi-(a) = (1/(n-1)) Σ_b pi(b,a)
   5) Net flow: phi(a) = phi+(a) - phi-(a)
-
-Not: V-shape, lineer tip, j-kararci gerektirmez, Vaysi (1992) orijinal.
 """
 
 from __future__ import annotations
@@ -33,11 +35,13 @@ AHP = PROJECT_ROOT / "results" / "ahp"
 MCDM = PROJECT_ROOT / "results" / "mcdm"
 MCDM.mkdir(parents=True, exist_ok=True)
 
-KRITER_SUTUNLARI = ["C1_hasar_risk", "C2_lojistik", "C3_bosluk_m", "C4_barinma"]
+# Faz 1'den gelen amplified (ayriklastirilmis) kriter sutunlari
+KRITER_SUTUNLARI = ["C1_hasar_risk_amp", "C2_lojistik_amp", "C3_bosluk_amp", "C4_barinma_amp"]
 
 print("[1/4] Veriler okunuyor...")
 criteria = pd.read_excel(PROCESSED / "criteria_matrix.xlsx")
-weights_df = pd.read_excel(AHP / "ahp_weights.xlsx")
+# AHP-Entropy Hibrit agirliklarini yukle
+weights_df = pd.read_excel(AHP / "ahp_weights_hybrid.xlsx")
 
 mat = criteria[KRITER_SUTUNLARI].copy().astype(float).values  # (140, 4)
 n, k = mat.shape
@@ -84,8 +88,10 @@ sonuclar = {
 
 for _, wrow in weights_df.iterrows():
     senaryo = wrow["scenario"]
-    w = np.array([wrow["C1_Nufus"], wrow["C2_Deprem"], wrow["C3_Erisim"], wrow["C4_Ulasim"]])
-    print(f"\n  --- {senaryo} (w = {w.round(4)}) ---")
+    # Hibrit agirliklari kullan
+    w = np.array([wrow["C1_Nufus_hyb"], wrow["C2_Deprem_hyb"], 
+                  wrow["C3_Erisim_hyb"], wrow["C4_Ulasim_hyb"]])
+    print(f"\n  --- {senaryo} (Hibrit w = {w.round(4)}) ---")
 
     phi = promethee_ii(mat, w, q_frac=0.20)
     sonuclar[f"phi_{senaryo}"] = phi

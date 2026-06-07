@@ -1,0 +1,9 @@
+{
+  "entropy_weights": {
+    "C1_hasar_risk": 0.23629,
+    "C2_lojistik": 0.40876,
+    "C3_bosluk_norm": 0.274322,
+    "C4_barinma": 0.080628
+  },
+  "note": "Shannon entropy tabanli nesnel agirliklar. Yuksek w_entropy = kriter daha ayirt edici."
+}

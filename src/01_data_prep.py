@@ -166,7 +166,19 @@ mevcut_clean.to_excel(PROCESSED / "mevcut_12.xlsx", index=False)
 # ---------------------------------------------------------------------------
 print("[6/6] Kriter matrisi olusturuluyor...")
 
-adaylar["Mahalle"] = adaylar["Mahalle"].str.strip().str.upper()
+def fix_tr_chars(s):
+    if not isinstance(s, str): return s
+    tr_map = {'İ': 'I', 'I': 'I', 'Ş': 'S', 'Ç': 'C', 'Ö': 'O', 'Ü': 'U', 'Ğ': 'G',
+              'i': 'i', 'ı': 'i', 'ş': 's', 'ç': 'c', 'ö': 'o', 'ü': 'u', 'ğ': 'g'}
+    for k, v in tr_map.items():
+        s = s.replace(k, v)
+    return s.strip().upper()
+
+adaylar["Mahalle"] = adaylar["Mahalle"].apply(fix_tr_chars)
+nufus_clean["mahalle"] = nufus_clean["mahalle"].apply(fix_tr_chars)
+risk_clean["mahalle"] = risk_clean["mahalle"].apply(fix_tr_chars)
+barinma_clean["mahalle"] = barinma_clean["mahalle"].apply(fix_tr_chars)
+
 nufus_idx = nufus_clean.set_index("mahalle")["nufus_2024"].to_dict()
 risk_idx = risk_clean.set_index("mahalle")["risk_score"].to_dict()
 barinma_idx = barinma_clean.set_index("mahalle")["hane_ihtiyaci"].to_dict()
@@ -174,9 +186,19 @@ barinma_idx = barinma_clean.set_index("mahalle")["hane_ihtiyaci"].to_dict()
 # C1: hasar riski (mahalleden)
 adaylar["C1_hasar_risk"] = adaylar["Mahalle"].map(risk_idx).fillna(risk_clean["risk_score"].mean())
 
-# C2: lojistik kompozit (su+wc+jen+kamera) -> 0-1 normalize
-infra_cols = ["Su_bin", "WC_bin", "Jen_bin", "Kamera_bin"]
-adaylar["C2_lojistik"] = adaylar[infra_cols].mean(axis=1)
+# C2: lojistik kompozit — deprem mudahalesi oncelik siralamasina gore agirlikli bilesik
+# Su (0.35): yasam icin kritik, oncelik 1
+# Jenerator (0.30): enerji bagimsizligi, gece mudahale, oncelik 2
+# WC (0.20): hijyen ve uzun sureli konaklama, oncelik 3
+# Kamera (0.15): guvenlik/izleme, oncelik 4
+W_INFRA = {"Su_bin": 0.35, "Jen_bin": 0.30, "WC_bin": 0.20, "Kamera_bin": 0.15}
+print(f"  C2 altyapi agirliklari: {W_INFRA}")
+adaylar["C2_lojistik"] = sum(
+    adaylar[col] * w for col, w in W_INFRA.items()
+)
+print(f"  C2_lojistik: mean={adaylar['C2_lojistik'].mean():.3f}, "
+      f"std={adaylar['C2_lojistik'].std():.3f}, "
+      f"max={adaylar['C2_lojistik'].max():.3f}")
 
 # C3: bosluk mesafesi (en yakin mevcut konteynere metre)
 def haversine_m(lat1, lon1, lat2, lon2):
@@ -209,8 +231,40 @@ criteria = adaylar[
      "C1_hasar_risk", "C2_lojistik", "C3_bosluk_m", "C3_bosluk_norm", "C4_barinma",
      "p_access_road"]
 ].copy()
+
+# ---------------------------------------------------------------------------
+# 6b) POWER TRANSFORM AMPLIFIKASYONU (Gorev 1.2)
+# ---------------------------------------------------------------------------
+# Amac: Yan yana konumlarda benzer skorlari ayiriklastirmak.
+# Min-max normalize → ham degerler [0,1]'e tasiniyor.
+# Power transform (alpha=2): yuksek degerler daha yuksege, dusuk degerler daha dusuge cekilir.
+# Ornek: 0.70 vs 0.90 farki 0.20 → amplified 0.49 vs 0.81, fark 0.32 (%60 artis)
+
+ALPHA_POWER = 2  # Amplifikasyon katsayisi; 1=linear, 2=kare, 3=kup
+
+kriter_ham = [
+    ("C1_hasar_risk", "C1_hasar_risk"),
+    ("C2_lojistik",   "C2_lojistik"),
+    ("C3_bosluk_norm","C3_bosluk"),   # norm versiyonu kullanilir
+    ("C4_barinma",    "C4_barinma"),
+]
+print(f"\n[+] Power transform amplifikasyonu (alpha={ALPHA_POWER})...")
+for src_col, prefix in kriter_ham:
+    col_vals = criteria[src_col].astype(float)
+    c_min, c_max = col_vals.min(), col_vals.max()
+    c_range = c_max - c_min
+    # Min-max normalize [0, 1]
+    norm = (col_vals - c_min) / (c_range + 1e-9)
+    # Power transform
+    amp  = norm ** ALPHA_POWER
+    criteria[f"{prefix}_norm"] = norm.round(6)
+    criteria[f"{prefix}_amp"]  = amp.round(6)
+    # Rapor: amplifikasyon oncesi vs sonrasi std (yuksek std = daha iyi ayirt edicilik)
+    print(f"  {src_col:20s}  norm_std={norm.std():.4f}  amp_std={amp.std():.4f}  "
+          f"(amplifikasyon orani: {amp.std()/norm.std():.2f}x)")
+
 criteria.to_excel(PROCESSED / "criteria_matrix.xlsx", index=False)
-print(f"  criteria_matrix: {criteria.shape}")
+print(f"  criteria_matrix: {criteria.shape}  (sütunlar: {list(criteria.columns)})")
 
 # ---------------------------------------------------------------------------
 # 7) 2 SENARYO TANIMI (sadelesmis)

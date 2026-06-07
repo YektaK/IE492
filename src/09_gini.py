@@ -42,19 +42,17 @@ def gini(values: np.ndarray) -> float:
 
 def main():
     print("== 09_gini.py basladi ==")
-    # 6 versiyonun coverage dosyalarini oku, her mahalle icin C_i al
-    # Yapisi: coverage_v1_...xlsx, satirlar mahalle, sutun: mu_mevcut, mu_aday_X, total
-    versions = [
-        "v1_TOPSIS_Baseline",
-        "v2_TOPSIS_DamageFocused",
-        "v3_TOPSIS_InfrastructureFocused",
-        "v4_PROMETHEE_Baseline",
-        "v5_PROMETHEE_DamageFocused",
-        "v6_PROMETHEE_InfrastructureFocused",
-    ]
+    # coverage dosyalarini dinamik olarak oku
+    models_dir = RES / "models"
+    coverage_files = list(models_dir.glob("coverage_*.xlsx"))
+    
+    if not coverage_files:
+        print("  Hic coverage dosyasi bulunamadi. Lutfen once 05_ip.py'yi calistirin.")
+        return
+
     rows = []
-    for v in versions:
-        path = RES / "models" / f"coverage_{v}.xlsx"
+    for path in coverage_files:
+        v = path.stem.replace("coverage_", "")
         df = pd.read_excel(path)
         # 'mahalle' ve coverage sutununu bul
         cols = list(df.columns)

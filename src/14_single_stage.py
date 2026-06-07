@@ -21,7 +21,7 @@ if sys.platform == "win32":
         pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scenario_utils import load_q_vector, fcm_paths
+from scenario_utils import load_q_vector, fuzzy_coverage_paths
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "processed"
@@ -33,34 +33,28 @@ ALPHA = 0.20
 L_THRESH = 0.50
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--scenario", default="A", choices=["A", "B"])
-    parser.add_argument("--sigma", type=str, default="800",
-                        help="FCM sigma (metre), or '800_300' for two-tier")
-    parser.add_argument("--K", type=int, default=8,
-                        help="Yeni konteyner sayisi (varsayilan: 8)")
-    parser.add_argument("--beta", type=float, default=0.30,
-                        help="Kalite agirligi (varsayilan: 0.30)")
-    parser.add_argument("--truncate", type=float, default=0.0,
-                        help="Mu esik degeri: altindaki mu'ler sifirlanir (0=kapali)")
-    parser.add_argument("--no-mevcut", action="store_true",
-                        help="Mevcut konteynerleri yok say (tam relocation)")
-    args = parser.parse_args()
-    SCENARIO = args.scenario
-    SIGMA = args.sigma
-    K = args.K
-    BETA = args.beta
-    TRUNCATE = args.truncate
-    NO_MEVCUT = args.no_mevcut
+def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None):
+    if KEPT_MEVCUT is None:
+        KEPT_MEVCUT = list(range(12))
+    if FIXED_ADAY is None:
+        FIXED_ADAY = []
 
     print(f"== 14_single_stage.py basladi (senaryo={SCENARIO}, sigma={SIGMA},"
-          f" K={K}, beta={BETA}) ==")
-    fcm = fcm_paths(SIGMA)
+          f" K_Total={K_TOTAL}, beta={BETA}, weight={WEIGHT_TYPE}) ==")
+    fcm = fuzzy_coverage_paths(SIGMA)
     mev_mu = pd.read_excel(fcm["mu_mevcut"])
     aday_mu = pd.read_excel(fcm["mu_aday"])
     aday_data = pd.read_excel(DATA / "adaylar_140.xlsx")
-    risk = pd.read_excel(DATA / "mahalle_risk.xlsx")
+    
+    if WEIGHT_TYPE == "risk":
+        weight_df = pd.read_excel(DATA / "mahalle_risk.xlsx")
+        val_col = "risk_score"
+    elif WEIGHT_TYPE == "population":
+        weight_df = pd.read_excel(DATA / "mahalle_nufus.xlsx")
+        val_col = "nufus_2024"
+    else:
+        weight_df = pd.read_excel(DATA / "mahalle_risk.xlsx")
+        val_col = "risk_score"
     cc = pd.read_excel(RES / "mcdm" / "topsis_cc.xlsx")
 
     mahalleler = list(mev_mu.columns[1:])
@@ -81,16 +75,16 @@ def main():
                     n_zero += 1
         print(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
 
-    if NO_MEVCUT:
-        for mh in mahalleler:
-            MU_mev[mh] = 0.0
-        print(f"  No-mevcut mod: mevcut konteyner katkilari sifirlandi")
+    MU_mev = {mh: sum(float(mev_mu.iloc[idx][mh]) for idx in KEPT_MEVCUT) for mh in mahalleler}
 
-    R = {row["mahalle"]: float(row["risk_score"]) for _, row in risk.iterrows()}
+    # Parametreler (Oransal Olcekleme)
+    weight_dict = {row["mahalle"]: float(row[val_col]) for _, row in weight_df.iterrows()}
+    w_max = max(weight_dict.values())
+    R = {mh: (weight_dict.get(mh, 1.0) / (w_max + 1e-9)) for mh in mahalleler}
+
     MU = {(int(aday_mu.iloc[j]["S_No"]), mh): float(aday_mu.iloc[j][mh])
           for j in range(n) for mh in mahalleler}
-    MU_mev = {mh: float(mev_mu[mh].sum()) for mh in mahalleler}
-    Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline"])
+    Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline_MinMax"])
          for j in range(len(cc))}
     P = {int(row["S_No"]): float(row["p_access_road"])
          for _, row in aday_data.iterrows()}
@@ -115,7 +109,9 @@ def main():
 
     prob += Z_rxc + Z_quality + Z_equity
 
-    prob += pulp.lpSum(x) == K
+    prob += pulp.lpSum(x) == (K_TOTAL - len(KEPT_MEVCUT))
+    for f_idx in FIXED_ADAY:
+        prob += x[f_idx] == 1
     for mh in mahalleler:
         if mh not in R:
             continue
@@ -166,7 +162,7 @@ def main():
         "RxC": [round(rxc_v, 4)],
         "Z_quality": [round(q_v, 4)],
         "Z_equity": [round(e_v, 4)],
-        "K": [K],
+        "K": [K_TOTAL],
         "alpha": [ALPHA],
         "secilen": [",".join(map(str, secilen))],
         "min_mahalle_cov": [mahalle_df["C_i"].min()],
@@ -176,10 +172,11 @@ def main():
 
     sg_str = "" if SIGMA == "800" else f"_sg{SIGMA}"
     tr_str = f"_t{TRUNCATE}" if TRUNCATE > 0 else ""
-    nm_str = "_nomez" if NO_MEVCUT else ""
+    nm_str = "_nomez" if len(KEPT_MEVCUT) == 0 else ""
     b_str = f"_b{int(BETA*100)}" if abs(BETA - 0.30) > 0.001 else ""
-    k_str = f"_K{K}" if K != 8 else ""
-    out_path = OUT / f"single_stage_result_S{SCENARIO}{sg_str}{tr_str}{nm_str}{b_str}{k_str}.xlsx"
+    k_str = f"_K{K_TOTAL}"
+    wt_str = f"_{WEIGHT_TYPE}" if WEIGHT_TYPE != "risk" else ""
+    out_path = OUT / f"single_stage_result_S{SCENARIO}{sg_str}{tr_str}{nm_str}{b_str}{k_str}{wt_str}.xlsx"
     with pd.ExcelWriter(out_path, engine="openpyxl") as w_:
         out.to_excel(w_, sheet_name="Ozet", index=False)
         mahalle_df.to_excel(w_, sheet_name="Mahalle_Kapsama", index=False)
@@ -188,4 +185,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scenario", default="A", choices=["A", "B"])
+    parser.add_argument("--sigma", type=str, default="800")
+    parser.add_argument("--K", type=int, default=8)
+    parser.add_argument("--beta", type=float, default=0.30)
+    parser.add_argument("--truncate", type=float, default=0.0)
+    parser.add_argument("--no-mevcut", action="store_true")
+    parser.add_argument("--weight", type=str, default="risk", choices=["risk", "population"])
+    args = parser.parse_args()
+    
+    kept = [] if args.no_mevcut else list(range(12))
+    k_tot = args.K if args.no_mevcut else args.K + 12
+    main(SCENARIO=args.scenario, SIGMA=args.sigma, K_TOTAL=k_tot, BETA=args.beta, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=kept)

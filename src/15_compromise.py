@@ -30,13 +30,23 @@ OUT  = ROOT / "results" / "compromise"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
-def main():
+def main(K_TOTAL=20, WEIGHT_TYPE="risk"):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scenario", default="A", choices=["A", "B"])
+    parser.add_argument("--K", type=int, default=K_TOTAL)
+    parser.add_argument("--weight", type=str, default=WEIGHT_TYPE)
     args = parser.parse_args()
-    SCENARIO = args.scenario
-    print(f"== 15_compromise.py basladi (senaryo={SCENARIO}) ==")
-    df = pd.read_excel(RES / "eps_constraint" / f"eps_pareto_S{SCENARIO}.xlsx")
+    
+    K = args.K
+    WT = args.weight
+    
+    print(f"== 15_compromise.py basladi (K_Total={K}, Weight={WT}) ==")
+    file_path = RES / "eps_constraint" / f"pareto_results_K{K}_{WT}.xlsx"
+    if not file_path.exists():
+        print(f"  Pareto dosyesi bulunamadi: {file_path}")
+        return
+        
+    df = pd.read_excel(file_path)
+    df = df.rename(columns={"eps_target": "eps", "actual_min_cov": "min_cov"})
     df = df.dropna(subset=["RxC", "min_cov"]).reset_index(drop=True)
     if len(df) < 2:
         print("  Yeterli Pareto noktasi yok, eps_constraint calistirilmamis olabilir.")
@@ -85,12 +95,12 @@ def main():
             "RxC": float(b["RxC"]),
             "min_cov": float(b["min_cov"]),
             "distance": round(float(b[f"d_{label}"]), 4),
-            "secilen": b["secilen"]
+            "secilen": b["selected_sites"]
         })
-        print(f"  {label}: eps={b['eps']}, RxC={b['RxC']:.4f}, min_cov={b['min_cov']:.4f}, d={b[f'd_{label}']:.4f}")
+        print(f"  {label}: eps={b['eps']:.3f}, RxC={b['RxC']:.4f}, min_cov={b['min_cov']:.4f}, d={b[f'd_{label}']:.4f}")
 
     out_df = pd.DataFrame(rows)
-    out_path = OUT / f"compromise_solution_S{SCENARIO}.xlsx"
+    out_path = OUT / f"compromise_solution_K{K}_{WT}.xlsx"
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         out_df.to_excel(w, sheet_name="Onerilen", index=False)
         df.to_excel(w, sheet_name="Tum_Pareto_Noktalari", index=False)
@@ -98,16 +108,11 @@ def main():
     print(f"\n  -> {out_path}")
 
     # Markdown
-    md = ["# Compromise Programming Sonucu\n",
-          "**Ideal nokta:** max RxC + max min mahalle kapsama\n\n",
-          f"| Norm | En iyi eps | RxC | min_C | Mesafe |\n",
-          f"|------|------------|------|-------|--------|\n"]
-    for r in rows:
-        md.append(f"| L={r['norm']} | {r['best_eps']} | {r['RxC']:.4f} | "
-                  f"{r['min_cov']:.4f} | {r['distance']:.4f} |\n")
-    md_path = OUT / f"compromise_solution_S{SCENARIO}.md"
-    md_path.write_text("".join(md), encoding="utf-8")
-    print(f"  -> {md_path}")
+    md = f"# Compromise Programlama Onerisi (K={K}, Weight={WT})\n\n"
+    md += "Pareto cephesindeki noktalar ideal noktaya gore siralandi.\n\n"
+    md += out_df.to_markdown(index=False)
+    with open(OUT / f"compromise_K{K}_{WT}.md", "w", encoding="utf-8") as f:
+        f.write(md)
     print("== 15_compromise.py tamamlandi ==")
 
 

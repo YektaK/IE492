@@ -6,9 +6,7 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCENARIOS_FILE = PROJECT_ROOT / "data" / "scenarios" / "scenarios.xlsx"
-QI_VECTOR_DIR = PROJECT_ROOT / "results" / "fcm"
-FCM_DIR = PROJECT_ROOT / "results" / "fcm"
-
+FUZZY_COV_DIR = PROJECT_ROOT / "results" / "fuzzy_coverage"
 
 def load_q_vector(scenario: str = "A", mahalleler: list[str] | None = None) -> np.ndarray:
     """
@@ -33,7 +31,7 @@ def load_q_vector(scenario: str = "A", mahalleler: list[str] | None = None) -> n
         return np.ones(15, dtype=float)
 
     if kod == "B":
-        qi_path = QI_VECTOR_DIR / "Q_i_vector.xlsx"
+        qi_path = FUZZY_COV_DIR / "Q_i_vector.xlsx"
         if not qi_path.exists():
             raise FileNotFoundError(f"Q_i vector not found: {qi_path}")
         qi_df = pd.read_excel(qi_path)
@@ -47,21 +45,23 @@ def load_q_vector(scenario: str = "A", mahalleler: list[str] | None = None) -> n
     raise ValueError(f"Unhandled scenario: {kod}")
 
 
-def fcm_paths(sigma: str = "800"):
+def fuzzy_coverage_paths(sigma: str = "800"):
     """
-    Resolve FCM file paths for a given sigma.
-
-    Parameters
-    ----------
-    sigma : str
-        Sigma value as string, e.g. '800', '300', '800_300'.
-
-    Returns
-    -------
-    dict with keys: mu_aday, mu_mevcut
+    Resolve Fuzzy Coverage file paths for a given sigma.
     """
-    suffix = f"_s{sigma}"
+    if sigma == "Adaptive":
+        return {
+            "mu_aday": FUZZY_COV_DIR / "mu_aday_140x17_sAdaptive.xlsx",
+            "mu_mevcut": FUZZY_COV_DIR / "mu_mevcut_12x17_sAdaptive.xlsx",
+            "dist_aday": FUZZY_COV_DIR / "distance_aday_140x17.xlsx",
+            "dist_mevcut": FUZZY_COV_DIR / "distance_mevcut_12x17.xlsx",
+            "Q_i_vector": FUZZY_COV_DIR / "Q_i_vector.xlsx"
+        }
+    
     return {
-        "mu_aday": FCM_DIR / f"mu_aday_140x17{suffix}.xlsx",
-        "mu_mevcut": FCM_DIR / f"mu_mevcut_12x17{suffix}.xlsx",
+        "mu_aday": FUZZY_COV_DIR / f"mu_aday_140x17_s{sigma}.xlsx",
+        "mu_mevcut": FUZZY_COV_DIR / f"mu_mevcut_12x17_s{sigma}.xlsx",
+        "dist_aday": FUZZY_COV_DIR / "distance_aday_140x17.xlsx",
+        "dist_mevcut": FUZZY_COV_DIR / "distance_mevcut_12x17.xlsx",
+        "Q_i_vector": FUZZY_COV_DIR / "Q_i_vector.xlsx"
     }
