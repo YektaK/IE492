@@ -1,27 +1,30 @@
 # -*- coding: utf-8 -*-
 """
 07_reporting.py
-Final paketleme: kazanan versiyon v1 (TOPSIS-Baseline) için
-  - FINAL_REPORT.xlsx (çok sayfalı, tüm çıktıları derler)
-  - Final harita (PNG): mevcut + yeni konteynerler, mahalle poligonları
-  - docs/rapor/FINAL_RAPOR.md (akademik Türkçe özet)
-  - figures/ harita + bar grafikleri
+Final Rapor Sentez Sistemi (V2)
 
-Girdi: 06_compare.py'nin ürettiği tüm dosyalar + 01-05 çıktıları
+Yeni metadata.json sistemine dayalı olarak:
+  - Tüm koşumları tarar ve metadata'larını toplar
+  - Çapraz karşılaştırma tabloları üretir
+  - FINAL_REPORT.xlsx (çok sayfalı) oluşturur
+  - Akademik Türkçe FINAL_RAPOR.md yazar
+  - Senaryolar arası karşılaştırma grafikleri çizer
+
+Kullanım:
+  python src/07_reporting.py
 """
 
 from __future__ import annotations
-import os
 import sys
-import glob
 import json
 import numpy as np
 import pandas as pd
-import openpyxl
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon as MplPolygon
-from matplotlib.collections import PatchCollection
+import seaborn as sns
 from pathlib import Path
+from datetime import datetime
 
 if sys.platform == "win32":
     try:
@@ -32,438 +35,354 @@ if sys.platform == "win32":
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "processed"
-RES  = ROOT / "results"
-OUT  = ROOT / "results" / "final"
-FIG  = ROOT / "figures"
-DOC  = ROOT / "docs" / "rapor"
-for d in [OUT, FIG, DOC]:
+RESULTS = ROOT / "results"
+MODELS_DIR = RESULTS / "models"
+OUT = RESULTS / "final"
+FIG = ROOT / "figures"
+CHARTS = FIG / "charts"
+DOC = ROOT / "docs" / "rapor"
+
+for d in [OUT, FIG, CHARTS, DOC]:
     d.mkdir(parents=True, exist_ok=True)
 
-KAZANAN = "v1"  # 06_compare.py rasyoneli
+plt.style.use("seaborn-v0_8-whitegrid")
+sns.set_context("paper", font_scale=1.2)
 
 
-# ---------- 1. Veri yükleme ----------
-def load_all() -> dict[str, object]:
-    return {
-        "adaylar":      pd.read_excel(DATA / "adaylar_140.xlsx"),
-        "mevcut":       pd.read_excel(DATA / "mevcut_12.xlsx"),
-        "mahalle":      pd.read_excel(DATA / "mahalle_nufus.xlsx"),
-        "mahalle_risk": pd.read_excel(DATA / "mahalle_risk.xlsx"),
-        "criteria":     pd.read_excel(RES / "ahp" / "criteria_definitions.xlsx"),
-        "ahp":          pd.read_excel(RES / "ahp" / "ahp_weights.xlsx"),
-        "topsis":       pd.read_excel(RES / "mcdm" / "topsis_cc.xlsx"),
-        "promethee":    pd.read_excel(RES / "mcdm" / "promethee_phi.xlsx"),
-        "fcm":          pd.read_excel(RES / "fcm" / "mu_aday_140x17.xlsx"),
-        "summary":      pd.read_excel(RES / "models" / "summary_all.xlsx").dropna(subset=["version"]),
-        "ip_kazanan":   pd.read_excel(RES / "models" / f"ip_{KAZANAN}_TOPSIS_Baseline.xlsx"),
-        "cov_kazanan":  pd.read_excel(RES / "models" / f"coverage_{KAZANAN}_TOPSIS_Baseline.xlsx"),
-        "compare":      pd.read_excel(RES / "comparison" / "compare_summary.xlsx"),
-    }
+# ────────────────────────────────────────
+# 1. TÜM METADATA'LARI TOPLA
+# ────────────────────────────────────────
+def collect_all_runs() -> list[dict]:
+    """Tüm *_metadata.json dosyalarını okuyarak bir liste döndürür."""
+    runs = []
+    for mf in sorted(MODELS_DIR.glob("*_metadata.json"), key=lambda x: x.stat().st_mtime):
+        with open(mf, "r", encoding="utf-8") as f:
+            runs.append(json.load(f))
+    return runs
 
 
-# ---------- 2. FINAL_REPORT.xlsx (çok sayfalı) ----------
-def write_final_xlsx(data: dict) -> Path:
+def build_master_summary(runs: list[dict]) -> pd.DataFrame:
+    """Her koşumun summary_all dosyasını okuyup tek bir DataFrame'de birleştirir."""
+    all_rows = []
+    for run in runs:
+        p = run["parameters"]
+        sf = run["files"].get("summary_file")
+        if not sf:
+            continue
+        sp = MODELS_DIR / sf
+        if not sp.exists():
+            continue
+        df = pd.read_excel(sp)
+        df["run_id"] = run["run_id"]
+        df["weight_type"] = p["weight_type"]
+        df["K_total"] = p["k_total"]
+        df["beta"] = p["beta"]
+        df["sigma"] = p["sigma"]
+        df["scenario_tag"] = p.get("scenario_tag", "?")
+        df["kept_count"] = len(p.get("kept_mevcut", []))
+        all_rows.append(df)
+    if not all_rows:
+        return pd.DataFrame()
+    return pd.concat(all_rows, ignore_index=True)
+
+
+# ────────────────────────────────────────
+# 2. KARŞILAŞTIRMA GRAFİKLERİ
+# ────────────────────────────────────────
+def plot_cross_scenario_bars(master: pd.DataFrame) -> Path:
+    """Senaryolar arası RxC ve min_cov karşılaştırma bar grafiği."""
+    if master.empty:
+        return FIG / "cross_scenario_bars.png"
+
+    # Her (weight_type, scenario_tag, K_total, beta) için en iyi Z_total'ı al
+    group_cols = ["weight_type", "scenario_tag", "K_total", "beta"]
+    avail = [c for c in group_cols if c in master.columns]
+    if not avail or "Z_total" not in master.columns:
+        return FIG / "cross_scenario_bars.png"
+
+    best = master.groupby(avail).agg(
+        Z_total_max=("Z_total", "max"),
+        RxC_max=("RxC", "max"),
+        min_cov_best=("min_mahalle_cov", "max"),
+        avg_cov_best=("avg_mahalle_cov", "max")
+    ).reset_index()
+
+    # Her Weight için ayrı subplot
+    weights = best["weight_type"].unique()
+    n = len(weights)
+    if n == 0:
+        return FIG / "cross_scenario_bars.png"
+
+    fig, axes = plt.subplots(1, n, figsize=(7*n, 6), squeeze=False)
+    colors = {"Ekleme": "#2196F3", "Bastan": "#FF5722"}
+
+    for idx, wt in enumerate(weights):
+        ax = axes[0, idx]
+        sub = best[best["weight_type"] == wt]
+        if sub.empty:
+            continue
+
+        x_labels = [f"β={row['beta']}" for _, row in sub.iterrows()]
+        x = np.arange(len(sub))
+        width = 0.35
+
+        bars1 = ax.bar(x - width/2, sub["RxC_max"], width,
+                        color=[colors.get(s, "#999") for s in sub["scenario_tag"]],
+                        label="RxC (max)", edgecolor="black", linewidth=0.5)
+        ax2 = ax.twinx()
+        bars2 = ax2.bar(x + width/2, sub["min_cov_best"], width,
+                         color=[colors.get(s, "#999") for s in sub["scenario_tag"]],
+                         alpha=0.5, label="Min Kapsama")
+
+        ax.set_xlabel("Beta (β)")
+        ax.set_ylabel("RxC", color="#1565C0")
+        ax2.set_ylabel("Min Kapsama", color="#BF360C")
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"{r['scenario_tag']}\nβ={r['beta']}" for _, r in sub.iterrows()],
+                           fontsize=8, rotation=30, ha="right")
+        ax.set_title(f"Hedef: {wt.upper()}", fontweight="bold")
+        ax.grid(axis="y", alpha=0.3)
+
+    fig.suptitle("Senaryolar Arası Karşılaştırma: RxC vs Min Kapsama", fontweight="bold", fontsize=14)
+    fig.tight_layout()
+    out = FIG / "cross_scenario_bars.png"
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def plot_mcdm_heatmap(master: pd.DataFrame) -> Path:
+    """MCDM yöntemleri × Senaryo heatmap'i."""
+    if master.empty or "mcdm" not in master.columns:
+        return FIG / "mcdm_heatmap.png"
+
+    pivot = master.groupby(["mcdm", "senaryo"])["Z_total"].max().reset_index()
+    try:
+        hm = pivot.pivot(index="mcdm", columns="senaryo", values="Z_total")
+    except Exception:
+        return FIG / "mcdm_heatmap.png"
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.heatmap(hm, annot=True, fmt=".3f", cmap="YlOrRd", ax=ax, linewidths=0.5)
+    ax.set_title("MCDM × AHP Senaryosu: Z (Amaç Fonksiyonu) Heatmap", fontweight="bold")
+    fig.tight_layout()
+    out = FIG / "mcdm_heatmap.png"
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+# ────────────────────────────────────────
+# 3. FINAL_REPORT.xlsx (çok sayfalı)
+# ────────────────────────────────────────
+def write_final_xlsx(runs: list[dict], master: pd.DataFrame) -> Path:
     out = OUT / "FINAL_REPORT.xlsx"
     with pd.ExcelWriter(out, engine="openpyxl") as w:
-        # Sayfa 1: Özet
-        meta = pd.DataFrame({
-            "Alan": [
-                "Proje", "Tarih", "Kazanan versiyon", "Kazanan MCDM",
-                "Kazanan senaryo", "Toplam RxC", "Min mahalle kapsama",
-                "Seçilen yeni konteyner sayısı", "Mevcut konteyner sayısı",
-                "Toplam konteyner sayısı", "Kriter sayısı",
-                "AHP senaryo sayısı", "MCDM yöntem sayısı",
-                "IP versiyon sayısı"
-            ],
-            "Deger": [
-                "IE492 Sultanbeyli Konteyner Optimizasyonu",
-                "2026-06-06", KAZANAN, "TOPSIS", "Baseline",
-                f"{data['summary'].loc[data['summary']['version']==KAZANAN,'RxC'].values[0]:.4f}",
-                f"{data['summary'].loc[data['summary']['version']==KAZANAN,'min_mahalle_cov'].values[0]:.4f}",
-                "8", "12", "20", "4", "3", "2", "6"
+        # Sayfa 1: Tüm Koşum Parametreleri
+        params_list = []
+        for r in runs:
+            p = r["parameters"]
+            params_list.append({
+                "Run_ID": r["run_id"],
+                "Tarih": r["timestamp"],
+                "K_Total": p["k_total"],
+                "Hedef": p["weight_type"],
+                "Beta": p["beta"],
+                "Sigma": p["sigma"],
+                "Korunan_Mevcut": len(p.get("kept_mevcut", [])),
+                "Zorunlu_Aday": len(p.get("fixed_aday", [])),
+                "Senaryo": p.get("scenario_tag", "?")
+            })
+        pd.DataFrame(params_list).to_excel(w, sheet_name="01_Kosum_Parametreleri", index=False)
+
+        # Sayfa 2: Master Özet (tüm MCDM skorları)
+        if not master.empty:
+            cols_show = [c for c in ["run_id", "weight_type", "K_total", "beta", "scenario_tag",
+                                      "mcdm", "senaryo", "Z_total", "RxC",
+                                      "min_mahalle_cov", "avg_mahalle_cov", "sure_s"] if c in master.columns]
+            master[cols_show].round(4).to_excel(w, sheet_name="02_Master_Skorlar", index=False)
+
+        # Sayfa 3: En İyi Sonuçlar (her koşumun en yüksek Z_total'ı)
+        if not master.empty:
+            best = master.loc[master.groupby("run_id")["Z_total"].idxmax()]
+            best.round(4).to_excel(w, sheet_name="03_En_Iyi_Sonuclar", index=False)
+
+        # Sayfa 4: Mevcut Konteynerler
+        mevcut = pd.read_excel(DATA / "mevcut_12.xlsx")
+        mevcut.to_excel(w, sheet_name="04_Mevcut_12", index=False)
+
+        # Sayfa 5: 140 Aday
+        adaylar = pd.read_excel(DATA / "adaylar_140.xlsx")
+        adaylar.to_excel(w, sheet_name="05_Aday_140", index=False)
+
+        # Sayfa 6: Mahalle Bilgileri
+        nufus = pd.read_excel(DATA / "mahalle_nufus.xlsx")
+        risk = pd.read_excel(DATA / "mahalle_risk.xlsx")
+        barinma = pd.read_excel(DATA / "mahalle_barinma.xlsx")
+        mahalle = nufus.merge(risk, on="mahalle", how="left", suffixes=("", "_r"))
+        mahalle = mahalle.merge(barinma, on="mahalle", how="left", suffixes=("", "_b"))
+        mahalle.to_excel(w, sheet_name="06_Mahalle_Bilgi", index=False)
+
+        # Sayfa 7: Pipeline
+        pipe = pd.DataFrame({
+            "Adim": ["01_data_prep", "02_ahp + 02b_bwm", "03a_topsis", "03b_promethee",
+                     "03c_vikor", "03d_electre", "04_fuzzy_coverage",
+                     "05_ip", "07_reporting", "app.py (Dashboard)"],
+            "Aciklama": [
+                "Veri hazırlama, 140 aday + 12 mevcut",
+                "AHP (3 senaryo) + BWM kriter ağırlıklandırma",
+                "TOPSIS CC skorları (MinMax + L2)",
+                "PROMETHEE II φ akışları",
+                "VIKOR Q benefit skorları",
+                "ELECTRE Net Outranking Flow",
+                "Gaussian μ (Adaptive σ + Two-Tier 300m)",
+                "0-1 IP Modeli (Oransal Ölçekleme + Esnek Kısıtlar)",
+                "Final rapor sentezi",
+                "Streamlit Dashboard (Job Queue + Multi-Compare)"
             ]
         })
-        meta.to_excel(w, sheet_name="00_Ozet", index=False)
-
-        # Sayfa 2: Seçilen 8 yeni konteyner
-        data["ip_kazanan"].to_excel(w, sheet_name="01_Secilen_Konteynerler", index=False)
-
-        # Sayfa 3: Mahalle kapsama
-        data["cov_kazanan"].to_excel(w, sheet_name="02_Mahalle_Kapsama", index=False)
-
-        # Sayfa 4: 6 versiyon özeti
-        data["summary"][[
-            "version","mcdm","senaryo","Z_total","Z_risk","Z_quality",
-            "RxC","min_mahalle_cov","avg_mahalle_cov",
-            "n_mahalle_below_050","n_mahalle_below_020","sure_s"
-        ]].round(4).to_excel(w, sheet_name="03_6_Versiyon_Ozet", index=False)
-
-        # Sayfa 5: AHP ağırlıkları
-        data["ahp"].to_excel(w, sheet_name="04_AHP_Agirliklari", index=False)
-
-        # Sayfa 6: TOPSIS CC
-        data["topsis"].to_excel(w, sheet_name="05_TOPSIS_CC", index=False)
-
-        # Sayfa 7: PROMETHEE phi
-        data["promethee"].to_excel(w, sheet_name="06_PROMETHEE_phi", index=False)
-
-        # Sayfa 8: Mevcut 12 konteyner
-        data["mevcut"].to_excel(w, sheet_name="07_Mevcut_12", index=False)
-
-        # Sayfa 9: 140 aday
-        data["adaylar"].to_excel(w, sheet_name="08_Aday_140", index=False)
-
-        # Sayfa 10: Mahalle nüfus + risk
-        mrg = data["mahalle"].merge(
-            data["mahalle_risk"], on="mahalle", how="left", suffixes=("", "_risk"))
-        mrg.to_excel(w, sheet_name="09_Mahalle_Bilgi", index=False)
-
-        # Sayfa 11: Karşılaştırma
-        data["compare"].to_excel(w, sheet_name="10_Karsilastirma", index=False)
-
-        # Sayfa 12: Pipeline özeti
-        pipe = pd.DataFrame({
-            "Adim": ["01_data_prep","02_ahp","03a_topsis","03b_promethee",
-                     "04_fcm","05_ip","06_compare","07_reporting"],
-            "Girdi": ["5 orijinal xlsx","krit.docx + eski 3 AHP",
-                      "criteria + ahp","criteria + ahp",
-                      "adaylar+mevcut koord","MU+CC+phi+R+P",
-                      "6 IP cikti","Kazanan versiyon"],
-            "Cikti": ["8 processed xlsx","ahp_weights.xlsx",
-                      "topsis_cc.xlsx","promethee_phi.xlsx",
-                      "mu_matrices.xlsx","6 ip_v* + coverage_v*",
-                      "compare_*.xlsx + rasyonal","FINAL_REPORT.xlsx"]
-        })
-        pipe.to_excel(w, sheet_name="11_Pipeline", index=False)
+        pipe.to_excel(w, sheet_name="07_Pipeline", index=False)
 
     return out
 
 
-# ---------- 3. Final harita (mahalle bazlı statik) ----------
-def plot_final_map(data: dict) -> Path:
-    """Mevcut 12 + yeni 8 konteyneri koordinat düzleminde gösterir."""
-    fig, ax = plt.subplots(figsize=(11, 9))
-
-    mev = data["mevcut"]
-    yeni = data["ip_kazanan"]
-
-    # Mevcut konteynerler (küçük harf kolon)
-    mev_lat, mev_lon = mev["enlem"], mev["boylam"]
-    ax.scatter(mev_lon, mev_lat,
-               s=180, c="#2ca02c", marker="s", edgecolors="black", linewidth=1.5,
-               label="Mevcut 12 konteyner", zorder=4)
-
-    # Yeni konteynerler
-    ax.scatter(yeni["Boylam"], yeni["Enlem"],
-               s=220, c="#d62728", marker="*", edgecolors="black", linewidth=1.5,
-               label=f"YENİ 8 konteyner ({KAZANAN})", zorder=5)
-
-    # Etiketler (mevcut)
-    for _, r in mev.iterrows():
-        ax.annotate(str(int(r["container_no"])), (r["boylam"], r["enlem"]),
-                    xytext=(4, 4), textcoords="offset points", fontsize=7,
-                    color="darkgreen", weight="bold")
-    for _, r in yeni.iterrows():
-        ax.annotate(str(int(r["S_No"])), (r["Boylam"], r["Enlem"]),
-                    xytext=(4, 4), textcoords="offset points", fontsize=8,
-                    color="darkred", weight="bold")
-
-    # Tüm 140 aday (gri, arka plan)
-    aday = data["adaylar"]
-    ax.scatter(aday["Boylam"], aday["Enlem"],
-               s=12, c="gray", alpha=0.35, label=f"Aday 140 parsel", zorder=2)
-
-    ax.set_xlabel("Boylam")
-    ax.set_ylabel("Enlem")
-    ax.set_title("Sultanbeyli Konteyner Yerleşim Planı (Kazanan: TOPSIS-Baseline, v1)\n"
-                 "Mevcut 12 (yeşil) + Önerilen 8 yeni (kırmızı yıldız)", fontsize=12)
-    ax.legend(loc="lower left", fontsize=9)
-    ax.grid(alpha=0.3)
-    fig.tight_layout()
-    out = FIG / "final_harita.png"
-    fig.savefig(out, dpi=160)
-    plt.close(fig)
-    return out
-
-
-# ---------- 4. Karşılaştırma bar grafiği (nihai) ----------
-def plot_compare_bars(data: dict) -> Path:
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
-
-    s = data["summary"]
-
-    # Sol: RxC
-    pivot_rxc = s.pivot_table(index="senaryo", columns="mcdm", values="RxC", aggfunc="first")
-    pivot_rxc.plot(kind="bar", ax=axes[0], color=["#1f77b4", "#ff7f0e"])
-    axes[0].set_title("RxC (Risk-weighted Coverage) — 6 Versiyon")
-    axes[0].set_ylabel("RxC")
-    axes[0].legend(title="MCDM")
-    axes[0].grid(axis="y", alpha=0.3)
-    axes[0].tick_params(axis="x", rotation=20)
-
-    # Sağ: min mahalle kapsama
-    pivot_min = s.pivot_table(index="senaryo", columns="mcdm",
-                              values="min_mahalle_cov", aggfunc="first")
-    pivot_min.plot(kind="bar", ax=axes[1], color=["#1f77b4", "#ff7f0e"])
-    axes[1].set_title("Minimum Mahalle Kapsama — 6 Versiyon")
-    axes[1].set_ylabel("min C_i")
-    axes[1].legend(title="MCDM")
-    axes[1].grid(axis="y", alpha=0.3)
-    axes[1].tick_params(axis="x", rotation=20)
-
-    fig.tight_layout()
-    out = FIG / "final_compare_bars.png"
-    fig.savefig(out, dpi=160)
-    plt.close(fig)
-    return out
-
-
-# ---------- 5. Kapsama radar grafiği (mahalle bazlı) ----------
-def plot_coverage_radar(data: dict) -> Path:
-    cov = data["cov_kazanan"].copy()
-    # Sütun adlarını güvenli hale getir
-    cov.columns = [str(c).strip() for c in cov.columns]
-    if "mahalle" not in cov.columns:
-        # ilk sütun mahalle olabilir
-        cov = cov.rename(columns={cov.columns[0]: "mahalle"})
-    cov["mahalle"] = cov["mahalle"].astype(str)
-
-    # Eğer 'toplam' sütunu varsa onu kullan
-    target = None
-    for cand in ["toplam", "toplam_coverage", "C_i", "coverage", "toplam_kapsama"]:
-        if cand in cov.columns:
-            target = cand
-            break
-    if target is None:
-        # sayısal sütunlardan birini seç
-        for c in cov.columns:
-            if c != "mahalle" and pd.api.types.is_numeric_dtype(cov[c]):
-                target = c
-                break
-
-    if target is None or len(cov) < 3:
-        print("  Radar grafigi icin uygun kolon bulunamadi, atlanıyor.")
-        return FIG / "final_radar.png"
-
-    m = cov.sort_values(target, ascending=False).head(12)
-
-    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-    cats = m["mahalle"].tolist()
-    vals = m[target].tolist()
-    # normalize 0-1
-    vmin, vmax = min(vals), max(vals)
-    rng = vmax - vmin if vmax > vmin else 1.0
-    nv = [(v - vmin) / rng for v in vals]
-
-    angles = np.linspace(0, 2*np.pi, len(cats), endpoint=False).tolist()
-    nv_plot = nv + [nv[0]]
-    angles += angles[:1]
-    ax.plot(angles, nv_plot, color="#d62728", linewidth=2)
-    ax.fill(angles, nv_plot, color="#d62728", alpha=0.25)
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(cats, fontsize=8)
-    ax.set_title("Mahalle Kapsama Radarı (Kazanan v1)", pad=20)
-    fig.tight_layout()
-    out = FIG / "final_radar.png"
-    fig.savefig(out, dpi=160)
-    plt.close(fig)
-    return out
-
-
-# ---------- 6. Akademik Türkçe özet rapor ----------
-def write_final_report(data: dict) -> Path:
-    s = data["summary"]
-    win = s[s["version"] == KAZANAN].iloc[0]
-    sites = data["ip_kazanan"]
-
-    mahalle_ort = data["mahalle"]
-    risk = data["mahalle_risk"]
-
-    # 6 versiyon tablosu
-    cmp = s[["version","mcdm","senaryo","RxC","min_mahalle_cov",
-             "avg_mahalle_cov","sure_s"]].round(4)
-
-    lines: list[str] = []
-    lines.append("# Sultanbeyli Konteyner Optimizasyonu — Final Rapor\n")
-    lines.append("**Tarih:** 2026-06-06  ")
+# ────────────────────────────────────────
+# 4. AKADEMİK RAPOR (FINAL_RAPOR.md)
+# ────────────────────────────────────────
+def write_final_report_md(runs: list[dict], master: pd.DataFrame) -> Path:
+    lines = []
+    lines.append("# Sultanbeyli Konteyner Optimizasyonu — Final Sentez Raporu\n")
+    lines.append(f"**Tarih:** {datetime.now().strftime('%Y-%m-%d')}  ")
     lines.append("**Kapsam:** IE492 Bitirme Projesi  ")
-    lines.append("**Yazar:** [öğrenci adı]  ")
-    lines.append("**Danışman:** [danışman adı]\n")
+    lines.append("**Proje:** Çok Kriterli Afet Müdahale Konteyner Konumlandırma Modeli\n")
     lines.append("---\n")
 
+    # 1. Yönetici Özeti
     lines.append("## 1. Yönetici Özeti\n")
     lines.append(
-        f"Bu çalışmada Sultanbeyli ilçesindeki 12 mevcut afet konteynerinin "
-        f"üzerine eklenecek **8 yeni konteyner** için çok kriterli, çok senaryolu "
-        f"bir yer seçim modeli geliştirilmiştir. Model, dört kriterli bir AHP "
-        f"ağırlıklandırmasını (Nüfus, Deprem Riski, Erişilebilirlik, Ulaşım) "
-        f"iki farklı ÇKKV yöntemiyle (TOPSIS ve PROMETHEE II) üç senaryoda "
-        f"(Baseline, Hasar-Odaklı, Altyapı-Odaklı) birleştirmiş, FCM tabanlı "
-        f"uzaysal üyelik fonksiyonu üzerinden 0-1 Karma Tamsayılı Programlama "
-        f"(MILP) ile toplam **6 versiyon** çözmüştür.\n"
+        f"Bu çalışmada Sultanbeyli ilçesindeki afet müdahale konteynerleri için çok kriterli, "
+        f"çok senaryolu bir yer seçim modeli geliştirilmiştir. Model, dört MCDM yöntemi "
+        f"(TOPSIS, PROMETHEE II, VIKOR, ELECTRE), üç AHP senaryosu (Baseline, Hasar-Odaklı, "
+        f"Altyapı-Odaklı) ve Adaptif Gaussian Bulanık Kapsama fonksiyonu üzerinden 0-1 Karma "
+        f"Tamsayılı Programlama (MILP) ile çözülmüştür.\n"
     )
-    lines.append(
-        f"**Kazanan versiyon:** `{KAZANAN}` (TOPSIS / Baseline)  \n"
-        f"- Risk-ağırlıklı kapsama (RxC): **{win['RxC']:.4f}**  \n"
-        f"- Minimum mahalle kapsama: **{win['min_mahalle_cov']:.4f}**  \n"
-        f"- Ortalama mahalle kapsama: **{win['avg_mahalle_cov']:.4f}**  \n"
-        f"- Çözüm süresi: **{win['sure_s']*1000:.0f} ms**\n"
-    )
-    lines.append(
-        "Modelin temel katkısı: AHP ağırlıklarının doğrudan MILP amaç "
-        "fonksiyonuna kalite katsayısı (β=0.30) olarak eklenmesi, "
-        "böylece senaryoların ve MCDM yöntemlerinin kararı **gerçekten** "
-        "etkilemesinin sağlanmasıdır.\n"
-    )
+    lines.append(f"**Toplam Koşum Sayısı:** {len(runs)}  ")
+    if not master.empty:
+        lines.append(f"**En Yüksek Z_total:** {master['Z_total'].max():.4f}  ")
+        lines.append(f"**En Yüksek RxC:** {master['RxC'].max():.4f}  ")
+        lines.append(f"**Ortalama Min Kapsama:** {master['min_mahalle_cov'].mean():.4f}\n")
 
+    # 2. Problem Tanımı
     lines.append("## 2. Problem Tanımı\n")
     lines.append(
-        "Sultanbeyli ilçesinde artan nüfus yoğunluğu ve kentsel yapısal "
-        "yoğunluk nedeniyle afet anında konteynerlere erişim eşit dağılmamaktadır. "
-        "Mevcut 12 konteyner bazı mahallelerde yığılma, bazılarında ise uzun "
-        "erişim mesafesi yaratmaktadır. Çalışmanın temel sorusu:\n\n"
-        "> *\"Sınırlı sayıda (K=8) yeni konteyner, hangi aday parselere yerleştirilmelidir "
-        "ki risk-ağırlıklı kapsama maksimize edilsin, ortalama erişim mesafesi "
-        "azalsın ve tüm mahallelerde kritik eşik (μ ≥ 0.50) sağlansın?*\"\n"
+        "Sultanbeyli ilçesinde artan nüfus yoğunluğu ve deprem riski nedeniyle, "
+        "mevcut 12 afet konteynerinin kapsama alanı yetersiz kalmaktadır. Bu çalışma, "
+        "sınırlı bütçe altında (K=8 ekleme veya K=20 baştan kurulum) yeni konteynerlerin "
+        "optimal yerleşimini, mahallelere adil erişim (spatial equity) garantisiyle çözmektedir.\n"
     )
 
-    lines.append("## 3. Veri ve Kriterler\n")
-    lines.append("| Kriter | Açıklama | Veri Kaynağı |")
-    lines.append("|--------|----------|--------------|")
-    lines.append("| C1 Nüfus | Mahalle nüfusu | TÜİK 2024 |")
-    lines.append("| C2 Deprem Riski | Hasar senaryosu skoru | İBB Hasar Senaryosu |")
-    lines.append("| C3 Erişilebilirlik | En yakın mevcut konteynere mesafe | Hesaplanan (Haversine) |")
-    lines.append("| C4 Ulaşım | Yol erişim olasılığı P_access | OSM/parseller |")
-    lines.append("| C5 Barınma | Hane ihtiyacı (yardımcı değişken) | Mahalle anketi |")
-    lines.append("| _FCM_ | _Uzaysal üyelik μ(i,j)_ | _Hesaplanan (σ=800m)_ |\n")
+    # 3. Amaç Fonksiyonu
+    lines.append("## 3. Matematiksel Model\n")
+    lines.append("### 3.1 Amaç Fonksiyonu\n")
+    lines.append("$$\\max Z = \\sum_{i\\in I} R_i \\cdot C_i + \\beta \\sum_{j\\in J} q_j X_j$$\n")
+    lines.append("### 3.2 Kısıtlar\n")
+    lines.append("- $\\sum_j X_j = K_{Total} - |\\text{Kept}|$ (Bütçe)")
+    lines.append("- $\\sum_{j \\in N_i} X_j + M_i \\ge 1 \\quad \\forall i$ (Min 1 Konteyner / Mahalle)")
+    lines.append("- $C_i \\ge 0.50 \\cdot R_{norm,i} \\quad \\forall i$ (Riske Orantılı Kapsama)")
+    lines.append("- $X_{f} = 1 \\quad \\forall f \\in \\text{Fixed}$ (Zorunlu Adaylar)")
+    lines.append("- Oransal Ölçekleme: $R_{norm,i} = R_i / R_{max}$ (0 yutan eleman engeli)\n")
 
-    lines.append("## 4. Yöntem\n")
-    lines.append("### 4.1 Pipeline (6 Aşama)\n")
-    lines.append("```")
-    lines.append("01 Veri Hazırlama  → 02 AHP (3 senaryo)")
-    lines.append("                   → 03a TOPSIS      (CC_j)")
-    lines.append("                   → 03b PROMETHEE II (phi_j)")
-    lines.append("                   → 04 FCM (μ_ij)")
-    lines.append("                   → 05 0-1 IP (max Z, K=8)")
-    lines.append("                   → 06 Karşılaştırma")
-    lines.append("                   → 07 Raporlama")
-    lines.append("```\n")
-    lines.append("### 4.2 Amaç Fonksiyonu\n")
-    lines.append("$$\\max Z = \\sum_{i\\in I} R_i \\cdot C_i + \\beta \\sum_{j\\in J} q_j X_j$$")
-    lines.append("$$\\text{s.t.}\\quad C_i = \\mu^{mev}_i + \\sum_{j\\in J} \\mu_{ij}\\,P_j\\,X_j,$$")
-    lines.append("$$\\quad\\sum_{j\\in J} X_j = K,\\quad X_j\\in\\{0,1\\},\\quad \\mu_{ij}=\\exp\\!\\left(-\\tfrac{d_{ij}^2}{2\\sigma^2}\\right)$$\n")
-    lines.append(f"Burada $q_j$ TOPSIS durumunda $CC_j$, PROMETHEE durumunda $\\phi_j$'dir; $\\beta=0.30$ sabit.\n")
+    # 4. Senaryolar
+    lines.append("## 4. Deney Senaryoları\n")
+    if runs:
+        lines.append("| # | K_Total | Hedef | β | Senaryo | Korunan | Run_ID |")
+        lines.append("|---|---------|-------|---|---------|---------|--------|")
+        for i, r in enumerate(runs):
+            p = r["parameters"]
+            lines.append(
+                f"| {i+1} | {p['k_total']} | {p['weight_type']} | {p['beta']} | "
+                f"{p.get('scenario_tag','?')} | {len(p.get('kept_mevcut',[]))} | {r['run_id'][:40]}... |"
+            )
+        lines.append("")
 
+    # 5. Sonuçlar
     lines.append("## 5. Sonuçlar\n")
-    lines.append("### 5.1 Kazanan Versiyon — Seçilen 8 Yeni Konteyner\n")
-    lines.append("| S_No | Alan Adı | Mahalle | Enlem | Boylam | q (TOPSIS) | p_road | Σμ |")
-    lines.append("|------|----------|---------|-------|--------|-----------|--------|-----|")
-    for _, r in sites.iterrows():
+    if not master.empty:
+        # En iyi sonuçlar tablosu
+        best = master.loc[master.groupby("run_id")["Z_total"].idxmax()]
+        cols = [c for c in ["run_id", "mcdm", "senaryo", "weight_type", "scenario_tag",
+                             "Z_total", "RxC", "min_mahalle_cov", "avg_mahalle_cov"] if c in best.columns]
+        lines.append("### 5.1 Her Koşumun En İyi MCDM Sonucu\n")
+        lines.append(best[cols].round(4).to_markdown(index=False))
+        lines.append("")
+
+        # Korelasyon bulgusu
+        lines.append("### 5.2 Veri Korelasyonu Bulguları\n")
         lines.append(
-            f"| {int(r['S_No'])} | {r['Alan_Adi']} | {r['Mahalle']} | "
-            f"{r['Enlem']:.5f} | {r['Boylam']:.5f} | "
-            f"{r['q_TOPSIS']:.4f} | {r['p_access_road']:.4f} | "
-            f"{r['toplam_mu_saglanan']:.4f} |"
+            "> **Önemli Bulgu:** Risk Skoru ile Barınma İhtiyacı arasında %94.1 Pearson korelasyonu "
+            "tespit edilmiştir. Bu nedenle bu iki değişken **alternatif senaryo** olarak kullanılmış, "
+            "aynı modelde birlikte ağırlıklandırılmamıştır. Ana karşılaştırma ekseni: **Risk vs Nüfus**.\n"
         )
-    lines.append("")
 
-    lines.append("### 5.2 6 Versiyon Karşılaştırması\n")
-    lines.append(cmp.to_markdown(index=False))
-    lines.append("\n")
-    lines.append("**Gözlem:** RxC değerleri 21.18–21.20 bandında sıkışmıştır; "
-                 "MCDM yöntemi (TOPSIS ↔ PROMETHEE) ve AHP senaryosu (Baseline ↔ "
-                 "Hasar-Odaklı) marjinal etki yaratır. Altyapı-Odaklı senaryo biraz "
-                 "düşük RxC üretir (21.1834) ama yine 0.82 minimum mahalle kapsama "
-                 "sağlar.\n")
+    # 6. Akademik Katkı
+    lines.append("## 6. Akademik Katkılar\n")
+    lines.append("1. **Oransal Ölçekleme:** 0 yutan eleman problemini ortadan kaldıran $W_i / W_{max}$ normalizasyonu.")
+    lines.append("2. **Adaptif Gaussian σ:** Nüfusa ters orantılı (400m-1200m) kapsama yarıçapı.")
+    lines.append("3. **Çift Kademeli Kapsama:** 300m içi tam kapsama ($\\mu=1.0$) + Gaussian azalma.")
+    lines.append("4. **4 MCDM Yöntemi:** TOPSIS, PROMETHEE II, VIKOR, ELECTRE paralel entegrasyonu.")
+    lines.append("5. **Esnek Kısıtlar:** Korunan mevcut + Zorunlu aday seçimi dinamik olarak modele girer.")
+    lines.append("6. **Dashboard:** Streamlit üzerinden Job Queue + Multi-Compare görsel analiz.\n")
 
-    lines.append("### 5.3 Mevcut 12 Konteyner\n")
-    lines.append("| S_No | Mahalle | Enlem | Boylam |")
-    lines.append("|------|---------|-------|--------|")
-    for _, r in data["mevcut"].iterrows():
-        lines.append(f"| {int(r['container_no'])} | {r['mahalle']} | "
-                     f"{r['enlem']:.5f} | {r['boylam']:.5f} |")
-    lines.append("")
-
-    lines.append("## 6. Akademik Katkı\n")
-    lines.append("1. **Kod düzeyinde kanıtlanmış etki:** q_j (TOPSIS CC veya PROMETHEE φ) "
-                 "MILP amaç fonksiyonuna doğrudan parametre olarak girer; bu sayede AHP "
-                 "senaryoları ve MCDM yöntemi kararı gerçekten etkiler (eski "
-                 "uygulamalarda q_j raporlama süslemesiydi).\n")
-    lines.append("2. **Karşılaştırmalı MCDM değerlendirme:** Aynı kriter matrisine iki "
-                 "farklı ÇKKV yönteminin paralel uygulanması, Pearson korelasyonu "
-                 "(≈ 0.98) ve top-10 Jaccard (0.54-1.00) ile yöntem sağlamlığını "
-                 "gösterir.\n")
-    lines.append("3. **Çok senaryolu hassasiyet:** 3 AHP senaryosu × 2 MCDM = 6 "
-                 "versiyon, senaryolar arası çekirdek konum sabitliğini (7-8/8 örtüşme) "
-                 "ve kenar seçim değişimini ortaya koyar.\n")
-    lines.append("4. **Hesaplama verimliliği:** Her versiyon < 100 ms CBC çözücü ile "
-                 "optimal çözülmüştür; operasyonel kullanıma uygundur.\n")
-
-    lines.append("## 7. Sınırlılıklar ve Gelecek Çalışmalar\n")
-    lines.append("- **FCM σ=800m** keyfidir; mobil veri ile kalibrasyon gerekir.")
-    lines.append("- **Yol ağı mesafesi** yok (Haversine kullanıldı); OSM entegrasyonu ileriki adım.")
-    lines.append("- **Dinamik/periyot** yok; afet öncesi/sonrası ayrımı modellenmedi.")
-    lines.append("- **Belirsizlik** modellenmedi; risk deterministik alındı.")
-    lines.append("- **Çok amaçlı** (RxC + ortalama mesafe) Pareto cephesi üretilmedi; "
-                 "tek amaçlı skalerleştirme yapıldı (β ağırlığı).\n")
-
-    lines.append("## 8. Dosya Yapısı\n")
-    lines.append("```")
-    lines.append("IE492/")
-    lines.append("├── data/")
-    lines.append("│   ├── raw/             # 5 orijinal girdi dosyası")
-    lines.append("│   └── processed/       # 8 temiz xlsx")
-    lines.append("├── src/                 # 01-07 Python kodları")
-    lines.append("├── results/")
-    lines.append("│   ├── ahp/             # AHP ağırlıkları")
-    lines.append("│   ├── mcdm/            # TOPSIS CC, PROMETHEE phi")
-    lines.append("│   ├── fcm/             # μ matrisleri")
-    lines.append("│   ├── models/          # 6 IP versiyonu")
-    lines.append("│   ├── comparison/      # Karşılaştırma tabloları")
-    lines.append("│   └── final/           # FINAL_REPORT.xlsx")
-    lines.append("├── figures/             # Tüm grafikler (final_harita.png dahil)")
-    lines.append("└── docs/")
-    lines.append("    ├── planlar/         # Planlar ve rasyonal.md")
-    lines.append("    └── rapor/           # FINAL_RAPOR.md (bu dosya)")
-    lines.append("```\n")
+    # 7. Sınırlılıklar
+    lines.append("## 7. Sınırlılıklar\n")
+    lines.append("- Haversine (kuş uçuşu) mesafe kullanılmıştır; yol ağı mesafesi entegre edilmemiştir.")
+    lines.append("- `p_access_road` verisi sentetiktir (seed=42).")
+    lines.append("- Her lokasyona en fazla 1 konteyner yerleştirilebilmektedir.")
+    lines.append("- Risk değerleri deterministik alınmıştır; belirsizlik modellenmemiştir.\n")
 
     out = DOC / "FINAL_RAPOR.md"
     out.write_text("\n".join(lines), encoding="utf-8")
     return out
 
 
-# ---------- 7. Çalıştır ----------
+# ────────────────────────────────────────
+# 5. MAIN
+# ────────────────────────────────────────
 def main():
-    print("== 07_reporting.py basladi ==")
-    data = load_all()
+    print("== 07_reporting.py (V2 — Metadata Tabanlı) başladı ==")
 
-    print("  [1/4] FINAL_REPORT.xlsx yaziliyor...")
-    fxlsx = write_final_xlsx(data)
-    print(f"    -> {fxlsx}")
+    runs = collect_all_runs()
+    print(f"  -> {len(runs)} koşum metadata'sı bulundu.")
 
-    print("  [2/4] Final harita ciziliyor...")
-    fmap = plot_final_map(data)
-    print(f"    -> {fmap}")
+    if not runs:
+        print("  !! Hiç metadata bulunamadı. Önce Dashboard'dan model çalıştırın.")
+        return
 
-    print("  [3/4] Karsilastirma grafigi...")
-    fbar = plot_compare_bars(data)
-    print(f"    -> {fbar}")
+    master = build_master_summary(runs)
+    print(f"  -> Master özet: {len(master)} satır ({master['run_id'].nunique()} benzersiz koşum)")
 
-    print("  [3b/4] Radar grafigi...")
-    fradar = plot_coverage_radar(data)
-    print(f"    -> {fradar}")
+    print("  [1/4] FINAL_REPORT.xlsx yazılıyor...")
+    xlsx = write_final_xlsx(runs, master)
+    print(f"    -> {xlsx}")
 
-    print("  [4/4] Akademik rapor yaziliyor...")
-    frpt = write_final_report(data)
-    print(f"    -> {frpt}")
+    print("  [2/4] Senaryolar arası karşılaştırma grafiği...")
+    bars = plot_cross_scenario_bars(master)
+    print(f"    -> {bars}")
 
-    print("\n== 07_reporting.py tamamlandi ==")
-    print(f"\nTeslimatlar:")
-    print(f"  - {fxlsx}")
-    print(f"  - {fmap}")
-    print(f"  - {fbar}")
-    print(f"  - {fradar}")
-    print(f"  - {frpt}")
+    print("  [3/4] MCDM Heatmap...")
+    hm = plot_mcdm_heatmap(master)
+    print(f"    -> {hm}")
+
+    print("  [4/4] Akademik rapor (FINAL_RAPOR.md)...")
+    rpt = write_final_report_md(runs, master)
+    print(f"    -> {rpt}")
+
+    print("\n== 07_reporting.py tamamlandı ==")
+    print(f"\nÇıktılar:")
+    print(f"  - {xlsx}")
+    print(f"  - {bars}")
+    print(f"  - {hm}")
+    print(f"  - {rpt}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,22 @@
+{
+    "run_id": "Run_20260607_195336_05ip_K20_Bastan_risk_b30",
+    "timestamp": "20260607_195336",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "risk",
+        "beta": 0.3,
+        "sigma": "Adaptive",
+        "kept_mevcut": [],
+        "fixed_aday": [],
+        "scenario_tag": "Bastan",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b30_K20_t0.15_nomez_risk.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b30_K20_t0.15_nomez_risk.xlsx",
+        "map_file": "Run_20260607_195336_05ip_K20_Bastan_risk_b30_map.html",
+        "chart_file": "Run_20260607_195336_05ip_K20_Bastan_risk_b30_coverage.png"
+    },
+    "stdout": "== 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.3, sigma=Adaptive_0.15, weight=risk, KeptMevcut=0, FixedAday=0) ==\n  -> TOPSIS     / Baseline                  / SA ... Z=33.369, RxC=31.068, min_cov=1.089\n  -> TOPSIS     / DamageFocused             / SA ... Z=33.392, RxC=30.926, min_cov=1.089\n  -> TOPSIS     / InfrastructureFocused     / SA ... Z=33.444, RxC=31.066, min_cov=1.089\n  -> PROMETHEE  / Baseline                  / SA ... Z=34.573, RxC=31.066, min_cov=1.089\n  -> PROMETHEE  / DamageFocused             / SA ... Z=34.495, RxC=31.068, min_cov=1.089\n  -> PROMETHEE  / InfrastructureFocused     / SA ... Z=34.664, RxC=30.950, min_cov=1.089\n  -> VIKOR      / Baseline                  / SA ... Z=33.715, RxC=31.012, min_cov=1.089\n  -> VIKOR      / DamageFocused             / SA ... Z=33.761, RxC=31.050, min_cov=1.018\n  -> VIKOR      / InfrastructureFocused     / SA ... Z=34.538, RxC=30.887, min_cov=1.089\n  -> ELECTRE    / Baseline                  / SA ... Z=34.759, RxC=31.066, min_cov=1.089\n  -> ELECTRE    / DamageFocused             / SA ... Z=34.750, RxC=31.082, min_cov=1.068\n  -> ELECTRE    / InfrastructureFocused     / SA ... Z=34.748, RxC=31.066, min_cov=1.089\n"
+}

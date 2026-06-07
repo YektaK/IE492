@@ -20,9 +20,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-FUZZY_COV_DIR = PROJECT_ROOT / "results" / "fuzzy_coverage"
+# Central Config import
+import config
+from config import norm_mahalle, DATA_DIR as PROCESSED, RESULTS_DIR
+
+FUZZY_COV_DIR = RESULTS_DIR / "fuzzy_coverage"
 FUZZY_COV_DIR.mkdir(parents=True, exist_ok=True)
 
 TRUNCATION_THRESHOLD = 0.15
@@ -34,16 +36,6 @@ mevcut = pd.read_excel(PROCESSED / "mevcut_12.xlsx")
 centroids = pd.read_excel(PROCESSED / "mahalle_centroids.xlsx")
 p_road = pd.read_excel(PROCESSED / "p_road_open.xlsx")
 nufus = pd.read_excel(PROCESSED / "mahalle_nufus.xlsx")
-
-def norm_mahalle(s: str) -> str:
-    if not isinstance(s, str):
-        return ""
-    tr_map = str.maketrans({
-        "Ç": "C", "Ğ": "G", "İ": "I", "Ö": "O", "Ş": "S", "Ü": "U",
-        "ç": "C", "ğ": "G", "ı": "I", "ö": "O", "ş": "S", "ü": "U",
-        "â": "A", "î": "I", "û": "U",
-    })
-    return s.strip().translate(tr_map).upper()
 
 adaylar["mahalle_norm"] = adaylar["Mahalle"].apply(norm_mahalle)
 mevcut["mahalle_norm"] = mevcut["mahalle"].apply(norm_mahalle)
@@ -102,76 +94,101 @@ def haversine_m(lat1, lon1, lat2, lon2):
     a = np.sin(dp / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
     return 2 * R * np.arcsin(np.sqrt(a))
 
-print("[3/5] Mesafe matrisleri hesaplaniyor...")
-aday_lat = adaylar["Enlem"].values
-aday_lon = adaylar["Boylam"].values
-mahalle_lat = mahalle_koord.loc[ana_mahalleler, "lat"].values
-mahalle_lon = mahalle_koord.loc[ana_mahalleler, "lon"].values
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", type=str, default="haversine", choices=["haversine", "road"])
+    args = parser.parse_args()
+    
+    print("[3/5] Mesafe matrisleri hesaplaniyor veya okunuyor...")
+    aday_lat = adaylar["Enlem"].values
+    aday_lon = adaylar["Boylam"].values
+    mahalle_lat = mahalle_koord.loc[ana_mahalleler, "lat"].values
+    mahalle_lon = mahalle_koord.loc[ana_mahalleler, "lon"].values
+    
+    if args.mode == "road":
+        print("  [+] Gercek yol agi (Road Network) mesafeleri yukleniyor...")
+        aday_path = FUZZY_COV_DIR / "distance_road_aday_140x17.xlsx"
+        mevcut_path = FUZZY_COV_DIR / "distance_road_mevcut_12x17.xlsx"
+        
+        if not (aday_path.exists() and mevcut_path.exists()):
+            print("  [-] Hata: Yol agi mesafe matrisleri bulunamadi. Lutfen once src/road_network.py calistirin.")
+            sys.exit(1)
+            
+        df_road_aday = pd.read_excel(aday_path)
+        df_road_mevcut = pd.read_excel(mevcut_path)
+        
+        # S_No ve container_no sutunlarini cikart
+        D_aday = df_road_aday[ana_mahalleler].values
+        D_mevcut = df_road_mevcut[ana_mahalleler].values
+        SUFFIX = "_sRoadNetwork"
+    else:
+        print("  [+] Haversine (kus ucusu) mesafeleri hesaplaniyor...")
+        D_aday = np.zeros((len(adaylar), len(ana_mahalleler)))
+        D_mevcut = np.zeros((len(mevcut), len(ana_mahalleler)))
+        
+        for j, (mlat, mlon) in enumerate(zip(mahalle_lat, mahalle_lon)):
+            D_aday[:, j] = haversine_m(mlat, mlon, aday_lat, aday_lon)
+            D_mevcut[:, j] = haversine_m(mlat, mlon, mevcut["enlem"].values, mevcut["boylam"].values)
+        SUFFIX = "_sAdaptive"
 
-D_aday = np.zeros((len(adaylar), len(ana_mahalleler)))
-D_mevcut = np.zeros((len(mevcut), len(ana_mahalleler)))
+    print("[4/5] Cift Kademeli (Two-Tier) ve Adaptif Kapsama hesaplanıyor...")
+    
+    def calc_coverage(D: np.ndarray, sigmas: np.ndarray, core: float, trunc: float):
+        n, m = D.shape
+        mu = np.zeros((n, m))
+        for j in range(m):
+            s = sigmas[j]
+            dist = D[:, j]
+            eff_dist = np.maximum(dist - core, 0)
+            mu_col = np.exp(-(eff_dist ** 2) / (2 * s ** 2))
+            mu_col[mu_col < trunc] = 0.0
+            mu[:, j] = mu_col
+        return mu
 
-for j, (mlat, mlon) in enumerate(zip(mahalle_lat, mahalle_lon)):
-    D_aday[:, j] = haversine_m(mlat, mlon, aday_lat, aday_lon)
-    D_mevcut[:, j] = haversine_m(mlat, mlon, mevcut["enlem"].values, mevcut["boylam"].values)
+    MU_aday = calc_coverage(D_aday, sigma_array, CORE_DISTANCE, TRUNCATION_THRESHOLD)
+    MU_mevcut = calc_coverage(D_mevcut, sigma_array, CORE_DISTANCE, TRUNCATION_THRESHOLD)
 
-print("[4/5] Cift Kademeli (Two-Tier) ve Adaptif Kapsama hesaplanıyor...")
+    print(f"  MU_aday max: {MU_aday.max():.4f}, mean: {MU_aday.mean():.4f}")
 
-def calc_coverage(D: np.ndarray, sigmas: np.ndarray, core: float, trunc: float):
-    n, m = D.shape
-    mu = np.zeros((n, m))
-    for j in range(m):
-        # O mahallenin sigmasi
-        s = sigmas[j]
-        # Her bir parselin o mahalleye mesafesi
-        dist = D[:, j]
-        # Core (300m) ici 1.0, disi Gaussian
-        eff_dist = np.maximum(dist - core, 0)
-        mu_col = np.exp(-(eff_dist ** 2) / (2 * s ** 2))
-        mu_col[mu_col < trunc] = 0.0
-        mu[:, j] = mu_col
-    return mu
+    print("[5/5] Q_i vektoru olusturuluyor...")
+    Q_i = (
+        p_road[p_road["mahalle_norm"].isin(ana_mahalleler)]
+        .set_index("mahalle_norm")
+        .reindex(ana_mahalleler)["p_road_open"]
+        .fillna(0.70)
+        .values
+    )
 
-MU_aday = calc_coverage(D_aday, sigma_array, CORE_DISTANCE, TRUNCATION_THRESHOLD)
-MU_mevcut = calc_coverage(D_mevcut, sigma_array, CORE_DISTANCE, TRUNCATION_THRESHOLD)
+    print(f"\n[+] Kaydediliyor (suffix={SUFFIX})...")
 
-print(f"  MU_aday max: {MU_aday.max():.4f}, mean: {MU_aday.mean():.4f}")
+    pd.DataFrame(D_aday, index=adaylar["S_No"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / f"distance_aday{SUFFIX}.xlsx" if args.mode == "road" else FUZZY_COV_DIR / "distance_aday_140x17.xlsx")
+    pd.DataFrame(D_mevcut, index=mevcut["container_no"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / f"distance_mevcut{SUFFIX}.xlsx" if args.mode == "road" else FUZZY_COV_DIR / "distance_mevcut_12x17.xlsx")
 
-print("[5/5] Q_i vektoru olusturuluyor...")
-Q_i = (
-    p_road[p_road["mahalle_norm"].isin(ana_mahalleler)]
-    .set_index("mahalle_norm")
-    .reindex(ana_mahalleler)["p_road_open"]
-    .fillna(0.70)
-    .values
-)
+    mu_aday_path = FUZZY_COV_DIR / f"mu_aday_140x17{SUFFIX}.xlsx"
+    mu_mevcut_path = FUZZY_COV_DIR / f"mu_mevcut_12x17{SUFFIX}.xlsx"
+    pd.DataFrame(MU_aday, index=adaylar["S_No"], columns=ana_mahalleler).to_excel(mu_aday_path)
+    pd.DataFrame(MU_mevcut, index=mevcut["container_no"], columns=ana_mahalleler).to_excel(mu_mevcut_path)
 
-print("\n[+] Kaydediliyor (sigma=Adaptive)...")
-SUFFIX = "_sAdaptive"
+    pd.DataFrame({"mahalle": ana_mahalleler, "Q_i_p_road_open": Q_i}).to_excel(FUZZY_COV_DIR / "Q_i_vector.xlsx", index=False)
+    pd.DataFrame({"mahalle": ana_mahalleler, "sigma_m": sigma_array}).to_excel(FUZZY_COV_DIR / "adaptive_sigmas.xlsx", index=False)
 
-pd.DataFrame(D_aday, index=adaylar["S_No"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / "distance_aday_140x17.xlsx")
-pd.DataFrame(D_mevcut, index=mevcut["container_no"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / "distance_mevcut_12x17.xlsx")
+    summary = {
+        "sigma": "RoadNetwork" if args.mode == "road" else "Adaptive (400-1200m)",
+        "two_tier_core_m": CORE_DISTANCE,
+        "truncation_threshold": TRUNCATION_THRESHOLD,
+        "n_aday": int(len(adaylar)),
+        "n_mahalle": int(len(ana_mahalleler)),
+        "mu_aday_mean": round(float(MU_aday.mean()), 4),
+    }
 
-mu_aday_path = FUZZY_COV_DIR / f"mu_aday_140x17{SUFFIX}.xlsx"
-mu_mevcut_path = FUZZY_COV_DIR / f"mu_mevcut_12x17{SUFFIX}.xlsx"
-pd.DataFrame(MU_aday, index=adaylar["S_No"], columns=ana_mahalleler).to_excel(mu_aday_path)
-pd.DataFrame(MU_mevcut, index=mevcut["container_no"], columns=ana_mahalleler).to_excel(mu_mevcut_path)
+    with open(FUZZY_COV_DIR / f"sigma_summary{SUFFIX}.json", "w", encoding="utf-8") as f:
+        json.dump(summary, f, ensure_ascii=False, indent=2)
 
-pd.DataFrame({"mahalle": ana_mahalleler, "Q_i_p_road_open": Q_i}).to_excel(FUZZY_COV_DIR / "Q_i_vector.xlsx", index=False)
-pd.DataFrame({"mahalle": ana_mahalleler, "sigma_m": sigma_array}).to_excel(FUZZY_COV_DIR / "adaptive_sigmas.xlsx", index=False)
+    print("=" * 60)
+    print("GAUSSIAN BULANIK KAPSAMA HESAPLAMA TAMAMLANDI")
+    print("=" * 60)
 
-summary = {
-    "sigma": "Adaptive (400-1200m)",
-    "two_tier_core_m": CORE_DISTANCE,
-    "truncation_threshold": TRUNCATION_THRESHOLD,
-    "n_aday": int(len(adaylar)),
-    "n_mahalle": int(len(ana_mahalleler)),
-    "mu_aday_mean": round(float(MU_aday.mean()), 4),
-}
-
-with open(FUZZY_COV_DIR / f"sigma_summary{SUFFIX}.json", "w", encoding="utf-8") as f:
-    json.dump(summary, f, ensure_ascii=False, indent=2)
-
-print("=" * 60)
-print("GAUSSIAN BULANIK KAPSAMA (ADAPTIF + IKI KADEMELI) TAMAMLANDI")
-print("=" * 60)
+if __name__ == "__main__":
+    import sys
+    main()

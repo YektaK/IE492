@@ -1,0 +1,8 @@
+{
+  "sigma": "RoadNetwork",
+  "two_tier_core_m": 300.0,
+  "truncation_threshold": 0.15,
+  "n_aday": 140,
+  "n_mahalle": 15,
+  "mu_aday_mean": 0.1419
+}

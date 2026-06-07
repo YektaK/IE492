@@ -1,0 +1,35 @@
+{
+    "run_id": "Run_20260607_195354_05ip_K20_Ekleme_population_b30",
+    "timestamp": "20260607_195354",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "population",
+        "beta": 0.3,
+        "sigma": "Adaptive",
+        "kept_mevcut": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+        ],
+        "fixed_aday": [],
+        "scenario_tag": "Ekleme",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b30_K20_t0.15_population.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b30_K20_t0.15_population.xlsx",
+        "map_file": "Run_20260607_195354_05ip_K20_Ekleme_population_b30_map.html",
+        "chart_file": "Run_20260607_195354_05ip_K20_Ekleme_population_b30_coverage.png"
+    },
+    "stdout": "== 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.3, sigma=Adaptive_0.15, weight=population, KeptMevcut=12, FixedAday=0) ==\n  -> TOPSIS     / Baseline                  / SA ... Z=35.634, RxC=34.610, min_cov=0.995\n  -> TOPSIS     / DamageFocused             / SA ... Z=35.697, RxC=34.610, min_cov=0.995\n  -> TOPSIS     / InfrastructureFocused     / SA ... Z=35.657, RxC=34.469, min_cov=1.279\n  -> PROMETHEE  / Baseline                  / SA ... Z=36.189, RxC=34.469, min_cov=1.279\n  -> PROMETHEE  / DamageFocused             / SA ... Z=36.143, RxC=34.610, min_cov=0.995\n  -> PROMETHEE  / InfrastructureFocused     / SA ... Z=36.265, RxC=34.469, min_cov=1.279\n  -> VIKOR      / Baseline                  / SA ... Z=35.794, RxC=34.610, min_cov=0.995\n  -> VIKOR      / DamageFocused             / SA ... Z=35.871, RxC=34.610, min_cov=0.995\n  -> VIKOR      / InfrastructureFocused     / SA ... Z=36.194, RxC=34.469, min_cov=1.279\n  -> ELECTRE    / Baseline                  / SA ... Z=36.224, RxC=34.469, min_cov=1.279\n  -> ELECTRE    / DamageFocused             / SA ... Z=36.202, RxC=34.610, min_cov=0.995\n  -> ELECTRE    / InfrastructureFocused     / SA ... Z=36.257, RxC=34.469, min_cov=1.279\n"
+}

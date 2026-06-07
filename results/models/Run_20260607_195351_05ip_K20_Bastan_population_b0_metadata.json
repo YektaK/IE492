@@ -1,0 +1,22 @@
+{
+    "run_id": "Run_20260607_195351_05ip_K20_Bastan_population_b0",
+    "timestamp": "20260607_195351",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "population",
+        "beta": 0.0,
+        "sigma": "Adaptive",
+        "kept_mevcut": [],
+        "fixed_aday": [],
+        "scenario_tag": "Bastan",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b0_K20_t0.15_nomez_population.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b0_K20_t0.15_nomez_population.xlsx",
+        "map_file": "Run_20260607_195351_05ip_K20_Bastan_population_b0_map.html",
+        "chart_file": "Run_20260607_195351_05ip_K20_Bastan_population_b0_coverage.png"
+    },
+    "stdout": "== 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.0, sigma=Adaptive_0.15, weight=population, KeptMevcut=0, FixedAday=0) ==\n  -> TOPSIS     / Baseline                  / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> TOPSIS     / DamageFocused             / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> TOPSIS     / InfrastructureFocused     / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> PROMETHEE  / Baseline                  / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> PROMETHEE  / DamageFocused             / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> PROMETHEE  / InfrastructureFocused     / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> VIKOR      / Baseline                  / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> VIKOR      / DamageFocused             / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> VIKOR      / InfrastructureFocused     / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> ELECTRE    / Baseline                  / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> ELECTRE    / DamageFocused             / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n  -> ELECTRE    / InfrastructureFocused     / SA ... Z=33.317, RxC=33.317, min_cov=1.908\n"
+}

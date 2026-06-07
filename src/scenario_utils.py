@@ -58,6 +58,15 @@ def fuzzy_coverage_paths(sigma: str = "800"):
             "Q_i_vector": FUZZY_COV_DIR / "Q_i_vector.xlsx"
         }
     
+    if sigma == "RoadNetwork":
+        return {
+            "mu_aday": FUZZY_COV_DIR / "mu_aday_140x17_sRoadNetwork.xlsx",
+            "mu_mevcut": FUZZY_COV_DIR / "mu_mevcut_12x17_sRoadNetwork.xlsx",
+            "dist_aday": FUZZY_COV_DIR / "distance_aday_sRoadNetwork.xlsx",
+            "dist_mevcut": FUZZY_COV_DIR / "distance_mevcut_sRoadNetwork.xlsx",
+            "Q_i_vector": FUZZY_COV_DIR / "Q_i_vector.xlsx"
+        }
+    
     return {
         "mu_aday": FUZZY_COV_DIR / f"mu_aday_140x17_s{sigma}.xlsx",
         "mu_mevcut": FUZZY_COV_DIR / f"mu_mevcut_12x17_s{sigma}.xlsx",

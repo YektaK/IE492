@@ -26,22 +26,13 @@ if sys.platform == "win32":
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scenario_utils import load_q_vector, fuzzy_coverage_paths
+from solver_core import build_base_variables_and_coverage, add_base_constraints
 
-ROOT = Path(__file__).resolve().parent.parent
-DATA = ROOT / "data" / "processed"
-RES  = ROOT / "results"
-OUT  = ROOT / "results" / "eps_constraint"
+# Central Config import
+import config
+from config import norm_mahalle, DATA_DIR as DATA, RESULTS_DIR as RES
+OUT  = RES / "eps_constraint"
 OUT.mkdir(parents=True, exist_ok=True)
-
-# K=8, S=Adaptive senaryosunda min_C 0.995 civarinda cikiyordu.
-# K=20'de min_C 1.089 civarinda.
-# Dolayisiyla epsilon taramasini buna gore dinamik yapacagiz.
-
-def norm_mahalle(s: str) -> str:
-    if not isinstance(s, str):
-        return ""
-    tr = str.maketrans({"Ç": "C", "Ğ": "G", "İ": "I", "Ö": "O", "Ş": "S", "Ü": "U", "ç": "C", "ğ": "G", "ı": "I", "ö": "O", "ş": "S", "ü": "U"})
-    return s.strip().translate(tr).upper()
 
 def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None):
     if KEPT_MEVCUT is None:
@@ -110,31 +101,26 @@ def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="ris
     
     for eps in eps_range:
         prob = pulp.LpProblem(f"Eps_{eps:.3f}", pulp.LpMaximize)
-        X = [pulp.LpVariable(f"X_{j}", cat="Binary") for j in range(n_aday)]
-
-        coverage = [
-            Q_i[i] * (mu_mev_sum[i] + pulp.lpSum(MU[j, i] * P_j[j] * X[j] for j in range(n_aday)))
-            for i in range(n_mah)
-        ]
+        
+        # solver_core helpers
+        X, coverage = build_base_variables_and_coverage(n_aday, n_mah, MU, P_j, Q_i, mu_mev_sum)
 
         Z_risk = pulp.lpSum(R_i_norm[i] * coverage[i] for i in range(n_mah))
         Z_quality = pulp.lpSum(q_j[j] * X[j] for j in range(n_aday))
-        prob += Z_risk + BETA * Z_quality
+        
+        # AUGMECON2: Epsilon kısıtları için surplus (artık) değişkenleri
+        surplus = [pulp.LpVariable(f"surplus_{i}", lowBound=0) for i in range(n_mah)]
+        
+        # Amaç fonksiyonuna surplus değişkenlerini küçük pozitif katsayı ile ekle (weakly efficient çözümleri engellemek için)
+        prob += Z_risk + BETA * Z_quality + 1e-5 * pulp.lpSum(surplus[i] for i in range(n_mah))
 
-        prob += pulp.lpSum(X) == (K_TOTAL - len(KEPT_MEVCUT))
-        for f_idx in FIXED_ADAY:
-            prob += X[f_idx] == 1
+        # Base constraints from solver_core
+        add_base_constraints(prob, X, coverage, K_TOTAL, KEPT_MEVCUT, FIXED_ADAY, 
+                             aday_mah_idx, mevcut_counts, R_i_norm, n_mah)
         
         for i in range(n_mah):
-            # 1. Riske Orantili (Faz 8 Sabit Kisit)
-            prob += coverage[i] >= 0.50 * R_i_norm[i]
-            
-            # 2. Min 1 Konteyner (Faz 8 Sabit Kisit)
-            adaylar_i = [j for j in range(n_aday) if aday_mah_idx[j] == i]
-            prob += pulp.lpSum(X[j] for j in adaylar_i) + mevcut_counts[i] >= 1
-            
-            # 3. Epsilon-Constraint (Minimum Kapsama Esitlik Kisiti)
-            prob += coverage[i] >= eps
+            # AUGMECON2 kısıtı: cov_i - surplus_i = eps (cov_i >= eps ile eşdeğerdir)
+            prob += coverage[i] - surplus[i] == eps, f"eps_con_{i}"
 
         solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
         prob.solve(solver)
@@ -146,16 +132,18 @@ def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="ris
             Z_risk_val = sum(R_i_norm[i] * cov_vals[i] for i in range(n_mah))
             rxc = Z_risk_val
             min_c = min(cov_vals)
+            avg_c = np.mean(cov_vals)
             
             rows.append({
                 "eps_target": eps,
                 "status": st,
                 "RxC": round(rxc, 4),
                 "actual_min_cov": round(min_c, 4),
+                "avg_cov": round(avg_c, 4),
                 "selected_sites": ",".join(map(str, sorted([int(adaylar.iloc[j]["S_No"]) for j in selected_idx])))
             })
             pareto_points.append((min_c, rxc))
-            print(f"  eps={eps:.3f} -> Optimal | RxC={rxc:.4f}, min_C={min_c:.4f}")
+            print(f"  eps={eps:.3f} -> Optimal | RxC={rxc:.4f}, min_C={min_c:.4f}, avg_C={avg_c:.4f}")
         else:
             print(f"  eps={eps:.3f} -> {st} (Cozumsuz)")
 

@@ -1,0 +1,22 @@
+{
+    "run_id": "Run_20260607_195406_05ip_K20_Bastan_population_b100",
+    "timestamp": "20260607_195406",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "population",
+        "beta": 1.0,
+        "sigma": "Adaptive",
+        "kept_mevcut": [],
+        "fixed_aday": [],
+        "scenario_tag": "Bastan",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b100_K20_t0.15_nomez_population.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b100_K20_t0.15_nomez_population.xlsx",
+        "map_file": "Run_20260607_195406_05ip_K20_Bastan_population_b100_map.html",
+        "chart_file": "Run_20260607_195406_05ip_K20_Bastan_population_b100_coverage.png"
+    },
+    "stdout": "== 05_ip.py basladi (senaryo=A, K_Total=20, beta=1.0, sigma=Adaptive_0.15, weight=population, KeptMevcut=0, FixedAday=0) ==\n  -> TOPSIS     / Baseline                  / SA ... Z=41.439, RxC=32.239, min_cov=1.478\n  -> TOPSIS     / DamageFocused             / SA ... Z=41.279, RxC=32.284, min_cov=1.170\n  -> TOPSIS     / InfrastructureFocused     / SA ... Z=42.627, RxC=31.410, min_cov=1.225\n  -> PROMETHEE  / Baseline                  / SA ... Z=45.733, RxC=32.120, min_cov=1.584\n  -> PROMETHEE  / DamageFocused             / SA ... Z=44.959, RxC=32.480, min_cov=1.584\n  -> PROMETHEE  / InfrastructureFocused     / SA ... Z=47.249, RxC=31.860, min_cov=1.225\n  -> VIKOR      / Baseline                  / SA ... Z=42.492, RxC=32.292, min_cov=1.170\n  -> VIKOR      / DamageFocused             / SA ... Z=42.431, RxC=32.735, min_cov=1.170\n  -> VIKOR      / InfrastructureFocused     / SA ... Z=47.434, RxC=31.307, min_cov=1.225\n  -> ELECTRE    / Baseline                  / SA ... Z=46.303, RxC=32.234, min_cov=1.584\n  -> ELECTRE    / DamageFocused             / SA ... Z=45.808, RxC=32.801, min_cov=1.584\n  -> ELECTRE    / InfrastructureFocused     / SA ... Z=47.298, RxC=31.626, min_cov=1.225\n"
+}

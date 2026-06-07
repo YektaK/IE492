@@ -27,21 +27,15 @@ import numpy as np
 import pandas as pd
 import pulp
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-MCDM_DIR = PROJECT_ROOT / "results" / "mcdm"
-FUZZY_COV_DIR = PROJECT_ROOT / "results" / "fuzzy_coverage"
-MODELS_DIR = PROJECT_ROOT / "results" / "models"
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
+# Central Config import
+import config
+from config import norm_mahalle, DATA_DIR as PROCESSED, RESULTS_DIR, MODELS_DIR
 
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
+MCDM_DIR = RESULTS_DIR / "mcdm"
+FUZZY_COV_DIR = RESULTS_DIR / "fuzzy_coverage"
+
 from scenario_utils import load_q_vector, fuzzy_coverage_paths
-
-def norm_mahalle(s: str) -> str:
-    if not isinstance(s, str):
-        return ""
-    tr = str.maketrans({"Ç": "C", "Ğ": "G", "İ": "I", "Ö": "O", "Ş": "S", "Ü": "U", "ç": "C", "ğ": "G", "ı": "I", "ö": "O", "ş": "S", "ü": "U"})
-    return s.strip().translate(tr).upper()
+from solver_core import build_base_variables_and_coverage, add_base_constraints
 
 def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", TRUNCATE=0.0, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None):
     """Calistirma fonksiyonu"""
@@ -172,33 +166,17 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
         if Q_i is None:
             Q_i = np.ones(n_mah)
         prob = pulp.LpProblem(f"Sultanbeyli_{mcdm}_{scen}", pulp.LpMaximize)
-        X = [pulp.LpVariable(f"X_{j}", cat="Binary") for j in range(n_aday)]
 
-        coverage = [
-            Q_i[i] * (mu_mev_sum[i] + pulp.lpSum(MU[j, i] * P_j[j] * X[j] for j in range(n_aday)))
-            for i in range(n_mah)
-        ]
+        # solver_core helpers
+        X, coverage = build_base_variables_and_coverage(n_aday, n_mah, MU, P_j, Q_i, mu_mev_sum)
 
         Z_risk = pulp.lpSum(R_i[i] * coverage[i] for i in range(n_mah))
         Z_quality = pulp.lpSum(q_j[j] * X[j] for j in range(n_aday))
         prob += Z_risk + beta * Z_quality
 
-        # Yeni Kisim: Toplam kapasite kisiti = K_TOTAL - Korunan Mevcutlar
-        # (Yani aday havuzundan sececegimiz X'lerin toplami)
-        prob += pulp.lpSum(X) == (K_TOTAL - len(KEPT_MEVCUT))
-        
-        # Zorunlu Adaylar Kisiti (Fixed Adaylar 1 olmali)
-        for f_idx in FIXED_ADAY:
-            prob += X[f_idx] == 1
-
-        # Min-1 Mahalle Kisiti (Hard Constraint)
-        for i in range(n_mah):
-            mah_adaylar = [j for j, idx in enumerate(aday_mah_idx) if idx == i]
-            # O mahalledeki adaylarin kapsami + O mahalledeki KORUNAN mevcutlarin sayisi >= 1
-            prob += pulp.lpSum(X[j] for j in mah_adaylar) + mevcut_counts[i] >= 1
-            
-            # Esnek Risk Orantili Kapsama Kisiti (Risk_norm_i'nin %50'si kadar)
-            prob += coverage[i] >= 0.50 * R_i[i]
+        # Base constraints from solver_core
+        add_base_constraints(prob, X, coverage, K_TOTAL, KEPT_MEVCUT, FIXED_ADAY, 
+                             aday_mah_idx, mevcut_counts, R_i, n_mah)
 
         t0 = time.time()
         prob.solve(pulp.PULP_CBC_CMD(msg=0))
@@ -265,7 +243,7 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
     sg_str = "" if SIGMA_FCM == "800" else f"_sg{SIGMA_FCM}"
     tr_str = f"_t{TRUNCATE}" if TRUNCATE > 0 else ""
     nm_str = "_nomez" if len(KEPT_MEVCUT) == 0 else ""
-    wt_str = f"_{WEIGHT_TYPE}" if WEIGHT_TYPE != "risk" else ""
+    wt_str = f"_{WEIGHT_TYPE}"
     
     file_suffix = f"S{SCENARIO}{sg_str}_b{int(BETA_QUALITY*100)}_K{K_TOTAL}{tr_str}{nm_str}{wt_str}"
     
@@ -294,12 +272,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch", action="store_true", help="Run budget scenarios: k=8 (ekleme) & k=20 (bastan)")
     parser.add_argument("--scenario", default="A")
-    parser.add_argument("--K", type=int, default=8)
+    parser.add_argument("--K", type=int, default=20)
     parser.add_argument("--beta", type=float, default=0.30)
     parser.add_argument("--sigma", type=str, default="800")
     parser.add_argument("--truncate", type=float, default=0.15)
     parser.add_argument("--no-mevcut", action="store_true")
     parser.add_argument("--weight", type=str, default="risk", choices=["risk", "population", "shelter"])
+    parser.add_argument("--kept", type=str, default="", help="Comma separated indices of kept mevcut containers")
+    parser.add_argument("--fixed", type=str, default="", help="Comma separated indices of fixed aday containers")
     args = parser.parse_args()
 
     if args.batch:
@@ -308,12 +288,20 @@ if __name__ == "__main__":
         print("==================================================")
         # Senaryo 1: Toplam K=20, Mevcut 12 Dahil (Yani 8 yeni eklenecek)
         print("\n>>> SENARYO: K_Total=20, Mevcut 12 Dahil (K_Opt=8)")
-        run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=list(range(12)))
+        run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=list(range(12)), FIXED_ADAY=[])
         
         # Senaryo 2: Toplam K=20, Mevcut Yok (Yani 20'si de yeni secilecek)
         print("\n>>> SENARYO: K_Total=20, Baştan Kurulum (K_Opt=20)")
-        run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=[])
+        run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=[], FIXED_ADAY=[])
     else:
-        kept = [] if args.no_mevcut else list(range(12))
-        k_tot = args.K if args.no_mevcut else args.K + 12
-        run_ip_model(SCENARIO=args.scenario, K_TOTAL=k_tot, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=kept)
+        if args.no_mevcut:
+            kept = []
+        elif args.kept != "":
+            kept = [int(x) for x in args.kept.split(",")]
+        else:
+            kept = list(range(12))
+            
+        fixed = [int(x) for x in args.fixed.split(",")] if args.fixed != "" else []
+        
+        # args.K is exactly K_TOTAL in the new system
+        run_ip_model(SCENARIO=args.scenario, K_TOTAL=args.K, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=kept, FIXED_ADAY=fixed)

@@ -6,28 +6,108 @@ Harita (Folium) ve Grafik (Matplotlib/Seaborn) motorlarının standartlaştırı
 Streamlit dashboard ve raporlama scriptleri tarafından ortak kullanılır.
 """
 
+import json
 import folium
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
+from config import norm_mahalle
 
 # Plot style
 plt.style.use("seaborn-v0_8-whitegrid")
 sns.set_context("paper", font_scale=1.2)
+
+def get_color(val):
+    """Kapsama seviyesine göre kırmızıdan yeşile renk gradyanı döndürür (0.50 hedef eşik)."""
+    # 0.50 ve üzeri tam yeşil, 0.25 sarı, 0.0 tam kırmızı
+    v = max(0.0, min(0.5, val)) / 0.5  # 0.0 - 1.0 aralığına normalleştir
+    if v < 0.5:
+        # Kırmızı -> Sarı gradyanı
+        r = 255
+        g = int(255 * (v / 0.5))
+        b = 0
+    else:
+        # Sarı -> Yeşil gradyanı
+        r = int(255 * (1.0 - (v - 0.5) / 0.5))
+        g = 255
+        b = 0
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 def plot_solution_map(selected_df: pd.DataFrame, 
                       kept_df: pd.DataFrame, 
                       removed_df: pd.DataFrame, 
                       fixed_df: pd.DataFrame, 
                       out_path: Path | str, 
-                      title: str = "Konteyner Yerleşim Planı"):
+                      title: str = "Konteyner Yerleşim Planı",
+                      cov_df: pd.DataFrame = None,
+                      sigma: int = 800):
     """
-    Folium kullanarak interaktif çözüm haritası oluşturur.
+    Folium kullanarak interaktif çözüm haritası oluşturur. 
+    Eğer cov_df verilmişse mahalle sınırlarını ve kapsama ısı haritasını (Choropleth) overlay eder.
     """
     m = folium.Map(location=[40.97, 29.27], zoom_start=13, tiles="CartoDB positron")
     
+    # 0. Mahalle Sınırları ve Kapsama Isı Haritası (Choropleth)
+    if cov_df is not None and not cov_df.empty:
+        geojson_path = Path(__file__).resolve().parent.parent / "data" / "processed" / "sultanbeyli_mahalleler_clean.geojson"
+        if geojson_path.exists():
+            with open(geojson_path, "r", encoding="utf-8") as f:
+                geojson_data = json.load(f)
+            
+            # Kapsama değerlerini haritala
+            cov_df_copy = cov_df.copy()
+            cov_df_copy["mahalle_norm"] = cov_df_copy["mahalle"].apply(norm_mahalle)
+            cov_dict = cov_df_copy.set_index("mahalle_norm")["toplam_kapsama"].to_dict()
+            
+            # GeoJSON özelliklerine kapsama yüzdesini ekle
+            for feature in geojson_data["features"]:
+                mah = feature["properties"]["mahalle"]
+                val = cov_dict.get(mah, 0.0)
+                feature["properties"]["coverage_pct"] = f"%{val*100:.1f}"
+                
+            def style_function(feature):
+                mah = feature["properties"]["mahalle"]
+                val = cov_dict.get(mah, 0.0)
+                color = get_color(val)
+                return {
+                    "fillColor": color,
+                    "color": "#7f8c8d",  # Kenarlık rengi (gri)
+                    "weight": 1.5,
+                    "fillOpacity": 0.25
+                }
+                
+            def highlight_function(feature):
+                return {
+                    "weight": 3,
+                    "color": "#2c3e50",
+                    "fillOpacity": 0.4
+                }
+                
+            # GeoJson katmanını ekle
+            geojson_layer = folium.GeoJson(
+                geojson_data,
+                style_function=style_function,
+                highlight_function=highlight_function,
+                tooltip=folium.GeoJsonTooltip(
+                    fields=["mahalle", "coverage_pct"],
+                    aliases=["Mahalle:", "Kapsama Oranı:"],
+                    localize=True,
+                    sticky=False,
+                    labels=True,
+                    style="""
+                        background-color: #F0F2F6;
+                        border: 2px solid #31333F;
+                        border-radius: 3px;
+                        font-family: sans-serif;
+                        font-size: 12px;
+                        padding: 8px;
+                    """
+                )
+            )
+            geojson_layer.add_to(m)
+
     # 1. Kaldırılan Mevcutlar (Gri, küçük)
     if not removed_df.empty:
         for _, r in removed_df.iterrows():
@@ -48,10 +128,10 @@ def plot_solution_map(selected_df: pd.DataFrame,
                 tooltip="Korunan Mevcut"
             ).add_to(m)
             
-            # Etki Alanı (Mevcut)
+            # Etki Alanı (Mevcut) - Adaptif Sigma yarıçapı ile
             folium.Circle(
                 location=[r["enlem"], r["boylam"]],
-                radius=800, color="green", fill=True, fill_opacity=0.05, weight=1
+                radius=sigma, color="green", fill=True, fill_opacity=0.04, weight=1
             ).add_to(m)
 
     # 3. Zorunlu Adaylar (Mavi)
@@ -66,13 +146,11 @@ def plot_solution_map(selected_df: pd.DataFrame,
             
             folium.Circle(
                 location=[r["Enlem"], r["Boylam"]],
-                radius=800, color="blue", fill=True, fill_opacity=0.05, weight=1
+                radius=sigma, color="blue", fill=True, fill_opacity=0.04, weight=1
             ).add_to(m)
 
     # 4. Yeni Seçilen Adaylar (Kırmızı)
     if not selected_df.empty:
-        # Zorunlu adaylar selected_df içinde de olabilir, çakışmayı önlemek için id bazlı filtre yapabiliriz
-        # Şimdilik direkt ekliyoruz.
         for _, r in selected_df.iterrows():
             # Eğer zaten fixed_df içindeyse atla
             if not fixed_df.empty and r["S_No"] in fixed_df["S_No"].values:
@@ -87,7 +165,7 @@ def plot_solution_map(selected_df: pd.DataFrame,
             
             folium.Circle(
                 location=[r["Enlem"], r["Boylam"]],
-                radius=800, color="red", fill=True, fill_opacity=0.1, weight=1
+                radius=sigma, color="red", fill=True, fill_opacity=0.08, weight=1
             ).add_to(m)
             
     title_html = f'''<h3 align="center" style="font-size:16px; margin-top:10px;"><b>{title}</b></h3>'''
@@ -144,3 +222,52 @@ def plot_coverage_bar(mahalleler: list,
     out_p.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(str(out_p), dpi=300, bbox_inches='tight')
     plt.close()
+
+
+def plot_lorenz_curve(values: np.ndarray, 
+                      out_path: Path | str, 
+                      title: str = "Lorenz Eğrisi (Kapsama Dağılımı Adaleti)"):
+    """
+    Kapsama vektörü için Lorenz Eğrisi çizer ve Gini katsayısını hesaplayıp döndürür.
+    """
+    vals = np.sort(values)
+    n = len(vals)
+    
+    # Gini Katsayısı
+    sum_diffs = np.sum(np.abs(vals[:, None] - vals[None, :]))
+    denom = 2 * n * np.sum(vals)
+    gini_coef = sum_diffs / denom if denom > 0 else 0.0
+    
+    cum_vals = np.cumsum(vals)
+    cum_share = cum_vals / cum_vals[-1] if cum_vals[-1] > 0 else np.zeros_like(vals)
+    
+    # Başlangıç noktası (0,0) ekleme
+    x_lorenz = np.linspace(0, 1, n + 1)
+    y_lorenz = np.insert(cum_share, 0, 0.0)
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Mükemmel Eşitlik Çizgisi
+    ax.plot([0, 1], [0, 1], color='#7f8c8d', linestyle='--', label='Mükemmel Eşitlik Çizgisi (45°)')
+    
+    # Lorenz Eğrisi
+    ax.plot(x_lorenz, y_lorenz, color='#e67e22', marker='o', markersize=4, linewidth=2, label=f'Mevcut Dağılım (Gini: {gini_coef:.3f})')
+    
+    # Eşitlik alanı doldurma
+    ax.fill_between(x_lorenz, x_lorenz, y_lorenz, color='#e67e22', alpha=0.15)
+    
+    ax.set_xlim(0, 1.0)
+    ax.set_ylim(0, 1.0)
+    ax.set_xlabel("Kümülatif Mahalle Oranı", fontweight='bold')
+    ax.set_ylabel("Kümülatif Kapsama Oranı", fontweight='bold')
+    ax.set_title(title, fontweight='bold', fontsize=12)
+    ax.legend(loc='upper left')
+    ax.grid(True, alpha=0.3)
+    
+    fig.tight_layout()
+    
+    out_p = Path(out_path)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(str(out_p), dpi=300, bbox_inches='tight')
+    plt.close()
+    return gini_coef

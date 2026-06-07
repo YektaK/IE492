@@ -22,11 +22,9 @@ if sys.platform == "win32":
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scenario_utils import load_q_vector, fuzzy_coverage_paths
-
-ROOT = Path(__file__).resolve().parent.parent
-DATA = ROOT / "data" / "processed"
-RES  = ROOT / "results"
-OUT  = ROOT / "results" / "single_stage"
+from config import DATA_DIR as DATA, RESULTS_DIR as RES
+from solver_core import dict_to_matrix, add_base_constraints
+OUT  = RES / "single_stage"
 OUT.mkdir(parents=True, exist_ok=True)
 
 ALPHA = 0.20
@@ -64,6 +62,16 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     Q_i_dict = {mh: float(Q_i_arr[i]) for i, mh in enumerate(mahalleler)}
     print(f"  Q_i ({SCENARIO}): min={Q_i_arr.min():.3f}, max={Q_i_arr.max():.3f}, mean={Q_i_arr.mean():.3f}")
 
+    MU_mev = {mh: sum(float(mev_mu.iloc[idx][mh]) for idx in KEPT_MEVCUT) for mh in mahalleler}
+
+    # Parametreler (Oransal Olcekleme)
+    weight_dict = {row["mahalle"]: float(row[val_col]) for _, row in weight_df.iterrows()}
+    w_max = max(weight_dict.values())
+    R = {mh: (weight_dict.get(mh, 1.0) / (w_max + 1e-9)) for mh in mahalleler}
+
+    MU = {(int(aday_mu.iloc[j]["S_No"]), mh): float(aday_mu.iloc[j][mh])
+          for j in range(n) for mh in mahalleler}
+
     # Truncation: kucuk mu degerlerini sifirla
     if TRUNCATE > 0:
         n_zero = 0
@@ -75,51 +83,43 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
                     n_zero += 1
         print(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
 
-    MU_mev = {mh: sum(float(mev_mu.iloc[idx][mh]) for idx in KEPT_MEVCUT) for mh in mahalleler}
-
-    # Parametreler (Oransal Olcekleme)
-    weight_dict = {row["mahalle"]: float(row[val_col]) for _, row in weight_df.iterrows()}
-    w_max = max(weight_dict.values())
-    R = {mh: (weight_dict.get(mh, 1.0) / (w_max + 1e-9)) for mh in mahalleler}
-
-    MU = {(int(aday_mu.iloc[j]["S_No"]), mh): float(aday_mu.iloc[j][mh])
-          for j in range(n) for mh in mahalleler}
     Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline_MinMax"])
          for j in range(len(cc))}
     P = {int(row["S_No"]): float(row["p_access_road"])
          for _, row in aday_data.iterrows()}
 
     prob = pulp.LpProblem("SingleStage", pulp.LpMaximize)
+    S_Nos = [int(aday_mu.iloc[j]["S_No"]) for j in range(n)]
+    MU_matrix = dict_to_matrix(MU, S_Nos, mahalleler)
+    P_arr = np.array([P[s] for s in S_Nos])
+    Q_arr = np.array([Q_i_dict[mh] for mh in mahalleler])
+    mu_mev_arr = np.array([MU_mev[mh] for mh in mahalleler])
+    R_arr = np.array([R[mh] for mh in mahalleler])
+
     x = [pulp.LpVariable(f"x{j}", cat="Binary") for j in range(n)]
     w = {mh: pulp.LpVariable(f"w_{mh}", cat="Binary") for mh in mahalleler if mh in R}
 
-    terms_rxc = []
-    for mh in mahalleler:
-        if mh not in R:
-            continue
-        qi = Q_i_dict[mh]
-        cov = qi * (MU_mev[mh] + pulp.lpSum(MU[(int(aday_mu.iloc[j]["S_No"]), mh)] *
-                                            P[int(aday_mu.iloc[j]["S_No"])] * x[j]
-                                            for j in range(n)))
-        terms_rxc.append(R[mh] * cov)
-    Z_rxc = pulp.lpSum(terms_rxc)
-    Z_quality = BETA * pulp.lpSum(
-        Q[int(aday_mu.iloc[j]["S_No"])] * x[j] for j in range(n))
+    coverage = [
+        Q_arr[i] * (mu_mev_arr[i] + pulp.lpSum(MU_matrix[j, i] * P_arr[j] * x[j] for j in range(n)))
+        for i in range(len(mahalleler))
+    ]
+    coverage_without_P = [
+        Q_arr[i] * (mu_mev_arr[i] + pulp.lpSum(MU_matrix[j, i] * x[j] for j in range(n)))
+        for i in range(len(mahalleler))
+    ]
+
+    Z_rxc = pulp.lpSum(R_arr[i] * coverage[i] for i in range(len(mahalleler)))
+    Z_quality = BETA * pulp.lpSum(Q[S_Nos[j]] * x[j] for j in range(n))
     Z_equity = ALPHA * pulp.lpSum(w[mh] for mh in w)
 
     prob += Z_rxc + Z_quality + Z_equity
 
-    prob += pulp.lpSum(x) == (K_TOTAL - len(KEPT_MEVCUT))
-    for f_idx in FIXED_ADAY:
-        prob += x[f_idx] == 1
-    for mh in mahalleler:
-        if mh not in R:
-            continue
-        qi = Q_i_dict[mh]
-        base = MU_mev[mh]
-        prob += (qi * (pulp.lpSum(MU[(int(aday_mu.iloc[j]["S_No"]), mh)] * x[j]
-                                  for j in range(n)) + base) >= L_THRESH * w[mh],
-                 f"servis_{mh}")
+    # solver_core base constraints
+    add_base_constraints(prob, x, coverage, K_TOTAL, KEPT_MEVCUT, FIXED_ADAY, 
+                         None, None, None, len(mahalleler), min_one=False, risk_prop=False)
+
+    for i, mh in enumerate(mahalleler):
+        prob += (coverage_without_P[i] >= L_THRESH * w[mh], f"servis_{mh}")
 
     solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
     prob.solve(solver)

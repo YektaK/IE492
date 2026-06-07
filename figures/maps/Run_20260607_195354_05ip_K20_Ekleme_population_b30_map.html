@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_8a8f4963ee500c5ceaf7b3ba9f04bf8b {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    <h3 align="center" style="font-size:16px; margin-top:10px;"><b>K=20 | Gece Nüfusu | Ekleme</b></h3>
+    
+            <div class="folium-map" id="map_8a8f4963ee500c5ceaf7b3ba9f04bf8b" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_8a8f4963ee500c5ceaf7b3ba9f04bf8b = L.map(
+                "map_8a8f4963ee500c5ceaf7b3ba9f04bf8b",
+                {
+                    center: [40.97, 29.27],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 13,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_7a433072cea11a7074aac72412c7d35c = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_7a433072cea11a7074aac72412c7d35c.addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_91932360dcc7f101810686346bc0a63b = L.marker(
+                [40.99135965208364, 29.26799970752074],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_cba52aacd1e41868b58b937bd4390b15 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f3fe045191e8e440a363aaab41e2ab0b = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_f990668e23814514de99eb0827f5a3b9 = $(`<div id="html_f990668e23814514de99eb0827f5a3b9" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: MIMAR SINAN</div>`)[0];
+                popup_f3fe045191e8e440a363aaab41e2ab0b.setContent(html_f990668e23814514de99eb0827f5a3b9);
+            
+        
+
+        marker_91932360dcc7f101810686346bc0a63b.bindPopup(popup_f3fe045191e8e440a363aaab41e2ab0b)
+        ;
+
+        
+    
+    
+            marker_91932360dcc7f101810686346bc0a63b.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_91932360dcc7f101810686346bc0a63b.setIcon(icon_cba52aacd1e41868b58b937bd4390b15);
+            
+    
+            var circle_e31504295af72b1c40711799da57c8ac = L.circle(
+                [40.99135965208364, 29.26799970752074],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_aab7b68dbb7a55c3f06f9ccd9b91525e = L.marker(
+                [40.95343883231818, 29.26311075774533],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_bc0a3cfe4c630e2ac5db7f15128ffe28 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_78f03a4080661cc9a1edc6f07e8ecde8 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_7cb6cc31723370f389fca58668ad7108 = $(`<div id="html_7cb6cc31723370f389fca58668ad7108" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: ABDURRAHMANGAZI</div>`)[0];
+                popup_78f03a4080661cc9a1edc6f07e8ecde8.setContent(html_7cb6cc31723370f389fca58668ad7108);
+            
+        
+
+        marker_aab7b68dbb7a55c3f06f9ccd9b91525e.bindPopup(popup_78f03a4080661cc9a1edc6f07e8ecde8)
+        ;
+
+        
+    
+    
+            marker_aab7b68dbb7a55c3f06f9ccd9b91525e.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_aab7b68dbb7a55c3f06f9ccd9b91525e.setIcon(icon_bc0a3cfe4c630e2ac5db7f15128ffe28);
+            
+    
+            var circle_231c54ca8f11dd61029fc7196362bbcb = L.circle(
+                [40.95343883231818, 29.26311075774533],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_668d8873028ff408a286c5e8d67aa7bf = L.marker(
+                [40.966, 29.2762],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_26f35b60cf494ff5f6e252826b83aa66 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d4fb56e6ee051ad9b9242e0ef47ca576 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_a16f93e74bc1fbe8bffd275d2153b9db = $(`<div id="html_a16f93e74bc1fbe8bffd275d2153b9db" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: TURGUT REIS</div>`)[0];
+                popup_d4fb56e6ee051ad9b9242e0ef47ca576.setContent(html_a16f93e74bc1fbe8bffd275d2153b9db);
+            
+        
+
+        marker_668d8873028ff408a286c5e8d67aa7bf.bindPopup(popup_d4fb56e6ee051ad9b9242e0ef47ca576)
+        ;
+
+        
+    
+    
+            marker_668d8873028ff408a286c5e8d67aa7bf.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_668d8873028ff408a286c5e8d67aa7bf.setIcon(icon_26f35b60cf494ff5f6e252826b83aa66);
+            
+    
+            var circle_7684377f9bda1f6486ae59ca0464ae77 = L.circle(
+                [40.966, 29.2762],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_d3c8691e9c58fe20f4c85e3b53168f03 = L.marker(
+                [40.9876, 29.2866],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_117445c9409782a8584322c02ec130ce = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_19646f943201f692e6ab48616359b10d = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_2e691c278db42e902f8d8dcd263186b7 = $(`<div id="html_2e691c278db42e902f8d8dcd263186b7" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: BATTALGAZI</div>`)[0];
+                popup_19646f943201f692e6ab48616359b10d.setContent(html_2e691c278db42e902f8d8dcd263186b7);
+            
+        
+
+        marker_d3c8691e9c58fe20f4c85e3b53168f03.bindPopup(popup_19646f943201f692e6ab48616359b10d)
+        ;
+
+        
+    
+    
+            marker_d3c8691e9c58fe20f4c85e3b53168f03.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_d3c8691e9c58fe20f4c85e3b53168f03.setIcon(icon_117445c9409782a8584322c02ec130ce);
+            
+    
+            var circle_30de6ff77863ea51969959803022f7fe = L.circle(
+                [40.9876, 29.2866],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_97697b431607c38f816e995f27b060b7 = L.marker(
+                [40.98431256785235, 29.28292602245544],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_b860d58d6be42dae6a8ba451b217fa41 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_7ff2ea93519a3c692c5660d61ecefb5e = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_6733087cad969c285457c17e78bc1c8d = $(`<div id="html_6733087cad969c285457c17e78bc1c8d" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: BATTALGAZI</div>`)[0];
+                popup_7ff2ea93519a3c692c5660d61ecefb5e.setContent(html_6733087cad969c285457c17e78bc1c8d);
+            
+        
+
+        marker_97697b431607c38f816e995f27b060b7.bindPopup(popup_7ff2ea93519a3c692c5660d61ecefb5e)
+        ;
+
+        
+    
+    
+            marker_97697b431607c38f816e995f27b060b7.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_97697b431607c38f816e995f27b060b7.setIcon(icon_b860d58d6be42dae6a8ba451b217fa41);
+            
+    
+            var circle_30593a82c62d363d0f9a275d154fe5f6 = L.circle(
+                [40.98431256785235, 29.28292602245544],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_c742345ebdf2d00e3ed3c2725881b018 = L.marker(
+                [40.97099081886383, 29.25230054133037],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_1a7385640069d40723d2e146cadfff2b = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_614cfcc64a62ef7db7d6369b266546ee = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_bb27e53e2e8cbde132a1324d88651690 = $(`<div id="html_bb27e53e2e8cbde132a1324d88651690" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: HASANPASA</div>`)[0];
+                popup_614cfcc64a62ef7db7d6369b266546ee.setContent(html_bb27e53e2e8cbde132a1324d88651690);
+            
+        
+
+        marker_c742345ebdf2d00e3ed3c2725881b018.bindPopup(popup_614cfcc64a62ef7db7d6369b266546ee)
+        ;
+
+        
+    
+    
+            marker_c742345ebdf2d00e3ed3c2725881b018.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_c742345ebdf2d00e3ed3c2725881b018.setIcon(icon_1a7385640069d40723d2e146cadfff2b);
+            
+    
+            var circle_97ff97e198842dab347dfa153c65d4e0 = L.circle(
+                [40.97099081886383, 29.25230054133037],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_6439c19d5352326574c56d3bc5180add = L.marker(
+                [40.9699, 29.2579],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_913abb503f3361080acd7815405b8c5f = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b6e69bb1055db0bbdf11419da7f792c5 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_a48a87b456a7ebcc16c9120363ad04aa = $(`<div id="html_a48a87b456a7ebcc16c9120363ad04aa" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: ABDURRAHMANGAZI</div>`)[0];
+                popup_b6e69bb1055db0bbdf11419da7f792c5.setContent(html_a48a87b456a7ebcc16c9120363ad04aa);
+            
+        
+
+        marker_6439c19d5352326574c56d3bc5180add.bindPopup(popup_b6e69bb1055db0bbdf11419da7f792c5)
+        ;
+
+        
+    
+    
+            marker_6439c19d5352326574c56d3bc5180add.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_6439c19d5352326574c56d3bc5180add.setIcon(icon_913abb503f3361080acd7815405b8c5f);
+            
+    
+            var circle_25ee07d902821592923a1dda8523e8b2 = L.circle(
+                [40.9699, 29.2579],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_55fb8b07d102d3b104b8f91462d0138c = L.marker(
+                [40.96883920530261, 29.26740035418011],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_82b0ee3493c9fb846998cf313317b2b7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f11a16f802387ca08e8feafcf1911591 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_4d5bfd300dad2e123302c50b78c84ed4 = $(`<div id="html_4d5bfd300dad2e123302c50b78c84ed4" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: MEHMET AKIF</div>`)[0];
+                popup_f11a16f802387ca08e8feafcf1911591.setContent(html_4d5bfd300dad2e123302c50b78c84ed4);
+            
+        
+
+        marker_55fb8b07d102d3b104b8f91462d0138c.bindPopup(popup_f11a16f802387ca08e8feafcf1911591)
+        ;
+
+        
+    
+    
+            marker_55fb8b07d102d3b104b8f91462d0138c.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_55fb8b07d102d3b104b8f91462d0138c.setIcon(icon_82b0ee3493c9fb846998cf313317b2b7);
+            
+    
+            var circle_462e3bbbf1d9b41f54469d21fea98ffb = L.circle(
+                [40.96883920530261, 29.26740035418011],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_df2612f5955e3522f91b3e770bb07fdb = L.marker(
+                [40.94732537694204, 29.30228786317313],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_8f61748768362f0bd655cfd50088f979 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_048501a4ada8ac0c5bc95934c737b006 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_4561c46348e1768327ee1f81766e03c4 = $(`<div id="html_4561c46348e1768327ee1f81766e03c4" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: AKSEMSETTIN</div>`)[0];
+                popup_048501a4ada8ac0c5bc95934c737b006.setContent(html_4561c46348e1768327ee1f81766e03c4);
+            
+        
+
+        marker_df2612f5955e3522f91b3e770bb07fdb.bindPopup(popup_048501a4ada8ac0c5bc95934c737b006)
+        ;
+
+        
+    
+    
+            marker_df2612f5955e3522f91b3e770bb07fdb.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_df2612f5955e3522f91b3e770bb07fdb.setIcon(icon_8f61748768362f0bd655cfd50088f979);
+            
+    
+            var circle_d8c9eed6cac1f58ce9bb4060c3953dbb = L.circle(
+                [40.94732537694204, 29.30228786317313],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_a42e0f3e01c5f313fa5bedffe78e6ec8 = L.marker(
+                [40.94071929172958, 29.29091708430066],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_9380201a818914aae5ada38b097e5862 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_ca99992a22982aaecfdc76ff887df539 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_c539fb0c72c321346f1a473468874f8d = $(`<div id="html_c539fb0c72c321346f1a473468874f8d" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: ORHANGAZI</div>`)[0];
+                popup_ca99992a22982aaecfdc76ff887df539.setContent(html_c539fb0c72c321346f1a473468874f8d);
+            
+        
+
+        marker_a42e0f3e01c5f313fa5bedffe78e6ec8.bindPopup(popup_ca99992a22982aaecfdc76ff887df539)
+        ;
+
+        
+    
+    
+            marker_a42e0f3e01c5f313fa5bedffe78e6ec8.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_a42e0f3e01c5f313fa5bedffe78e6ec8.setIcon(icon_9380201a818914aae5ada38b097e5862);
+            
+    
+            var circle_2ba566713072a4692dd7e32d78c78b97 = L.circle(
+                [40.94071929172958, 29.29091708430066],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_32ffe1281f05b081c86e0725980f47be = L.marker(
+                [40.93986791845225, 29.27358071445466],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_d8c5d4671807789939b68fb452af73a7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_3916d2e2c312b7585d5ce018de90a142 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_1fab9c4659e5a8ce20d9ca5c6ada6105 = $(`<div id="html_1fab9c4659e5a8ce20d9ca5c6ada6105" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: NECIP FAZIL</div>`)[0];
+                popup_3916d2e2c312b7585d5ce018de90a142.setContent(html_1fab9c4659e5a8ce20d9ca5c6ada6105);
+            
+        
+
+        marker_32ffe1281f05b081c86e0725980f47be.bindPopup(popup_3916d2e2c312b7585d5ce018de90a142)
+        ;
+
+        
+    
+    
+            marker_32ffe1281f05b081c86e0725980f47be.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_32ffe1281f05b081c86e0725980f47be.setIcon(icon_d8c5d4671807789939b68fb452af73a7);
+            
+    
+            var circle_77171f0703c674437ca3ab2794dc991d = L.circle(
+                [40.93986791845225, 29.27358071445466],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_1c43d1565cf6f62795d5e8ba5e5b56e2 = L.marker(
+                [40.94995917382037, 29.27704768729355],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_92eb2d44b3519e73a461900134827e36 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_2e4b17817cd03ec0a21f21785c7a9786 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_4953d50843560f46ea48e44eb173a1d5 = $(`<div id="html_4953d50843560f46ea48e44eb173a1d5" style="width: 100.0%; height: 100.0%;">KORUNAN Mevcut Konteyner<br>Mahalle: YAVUZ SELIM</div>`)[0];
+                popup_2e4b17817cd03ec0a21f21785c7a9786.setContent(html_4953d50843560f46ea48e44eb173a1d5);
+            
+        
+
+        marker_1c43d1565cf6f62795d5e8ba5e5b56e2.bindPopup(popup_2e4b17817cd03ec0a21f21785c7a9786)
+        ;
+
+        
+    
+    
+            marker_1c43d1565cf6f62795d5e8ba5e5b56e2.bindTooltip(
+                `<div>
+                     Korunan Mevcut
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_1c43d1565cf6f62795d5e8ba5e5b56e2.setIcon(icon_92eb2d44b3519e73a461900134827e36);
+            
+    
+            var circle_d6a5269a0e5bb7ce5020f95b61cdcc7c = L.circle(
+                [40.94995917382037, 29.27704768729355],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.05, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_6f5ee66e8ef3b00acb167e9d07b16ba4 = L.marker(
+                [40.9648951717146, 29.26242101741815],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_eabed1ea52a809d5c7eae149e9bb4cb4 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f306190c9522bb5dcdeeb09bd5b6263d = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_f9f142adf2fb015acdb21a0fdfc3650b = $(`<div id="html_f9f142adf2fb015acdb21a0fdfc3650b" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 4)<br>Mahalle: ABDURRAHMANGAZİ</div>`)[0];
+                popup_f306190c9522bb5dcdeeb09bd5b6263d.setContent(html_f9f142adf2fb015acdb21a0fdfc3650b);
+            
+        
+
+        marker_6f5ee66e8ef3b00acb167e9d07b16ba4.bindPopup(popup_f306190c9522bb5dcdeeb09bd5b6263d)
+        ;
+
+        
+    
+    
+            marker_6f5ee66e8ef3b00acb167e9d07b16ba4.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 4
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_6f5ee66e8ef3b00acb167e9d07b16ba4.setIcon(icon_eabed1ea52a809d5c7eae149e9bb4cb4);
+            
+    
+            var circle_6567efc61c265ff4bd3e7e0f68b9b0a6 = L.circle(
+                [40.9648951717146, 29.26242101741815],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_4bb90fc4ed5c8c1e55281a2ca5af846d = L.marker(
+                [40.98072340092061, 29.26238410907338],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_f9af1e0067ebe7f759ad776c7ca3f19d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_6c022aaae4889294d55c4550a4f82c4d = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_a5f2c9ab73685356a7e9a81703afc812 = $(`<div id="html_a5f2c9ab73685356a7e9a81703afc812" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 16)<br>Mahalle: ADİL</div>`)[0];
+                popup_6c022aaae4889294d55c4550a4f82c4d.setContent(html_a5f2c9ab73685356a7e9a81703afc812);
+            
+        
+
+        marker_4bb90fc4ed5c8c1e55281a2ca5af846d.bindPopup(popup_6c022aaae4889294d55c4550a4f82c4d)
+        ;
+
+        
+    
+    
+            marker_4bb90fc4ed5c8c1e55281a2ca5af846d.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 16
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_4bb90fc4ed5c8c1e55281a2ca5af846d.setIcon(icon_f9af1e0067ebe7f759ad776c7ca3f19d);
+            
+    
+            var circle_ce752da9d209d9cd4b726192a0527855 = L.circle(
+                [40.98072340092061, 29.26238410907338],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_6e99290e3d7dc07e31c5e0fd76ff645a = L.marker(
+                [40.97271700732063, 29.27403441655196],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_246c5ba7839c98cde183f7cae8f3c399 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_00e6fc2f59d8b30986d2011a5c8aa2d2 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_d7ffe8e757dcae6531218d8a3b384cc4 = $(`<div id="html_d7ffe8e757dcae6531218d8a3b384cc4" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 21)<br>Mahalle: AHMET YESEVİ</div>`)[0];
+                popup_00e6fc2f59d8b30986d2011a5c8aa2d2.setContent(html_d7ffe8e757dcae6531218d8a3b384cc4);
+            
+        
+
+        marker_6e99290e3d7dc07e31c5e0fd76ff645a.bindPopup(popup_00e6fc2f59d8b30986d2011a5c8aa2d2)
+        ;
+
+        
+    
+    
+            marker_6e99290e3d7dc07e31c5e0fd76ff645a.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 21
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_6e99290e3d7dc07e31c5e0fd76ff645a.setIcon(icon_246c5ba7839c98cde183f7cae8f3c399);
+            
+    
+            var circle_81fcfb88e3740ea52e7a96736e413254 = L.circle(
+                [40.97271700732063, 29.27403441655196],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_6c8c0d1d51873a7c767f0aecccfcfc17 = L.marker(
+                [40.95306184748708, 29.27456122232974],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_14374aab20a51970344f64c029c7b9c2 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_912e3366b25569c7ee4c27b1fd0511b6 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_75a4e070aeef1b166eb244382ee66e3b = $(`<div id="html_75a4e070aeef1b166eb244382ee66e3b" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 55)<br>Mahalle: FATİH</div>`)[0];
+                popup_912e3366b25569c7ee4c27b1fd0511b6.setContent(html_75a4e070aeef1b166eb244382ee66e3b);
+            
+        
+
+        marker_6c8c0d1d51873a7c767f0aecccfcfc17.bindPopup(popup_912e3366b25569c7ee4c27b1fd0511b6)
+        ;
+
+        
+    
+    
+            marker_6c8c0d1d51873a7c767f0aecccfcfc17.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 55
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_6c8c0d1d51873a7c767f0aecccfcfc17.setIcon(icon_14374aab20a51970344f64c029c7b9c2);
+            
+    
+            var circle_8dee1480aeb13dcfb374b4beca09b80e = L.circle(
+                [40.95306184748708, 29.27456122232974],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_b117cde8863cd45dd767ca5caf90e9bf = L.marker(
+                [40.95120838819276, 29.2900754188337],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_97282b37e7a9777da172b78a3f5c81a9 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_8a434b746dae7f9b3631512a2a3f1fe4 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_135ce5efa501c9dcef055294c3d87f3d = $(`<div id="html_135ce5efa501c9dcef055294c3d87f3d" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 60)<br>Mahalle: HAMİDİYE</div>`)[0];
+                popup_8a434b746dae7f9b3631512a2a3f1fe4.setContent(html_135ce5efa501c9dcef055294c3d87f3d);
+            
+        
+
+        marker_b117cde8863cd45dd767ca5caf90e9bf.bindPopup(popup_8a434b746dae7f9b3631512a2a3f1fe4)
+        ;
+
+        
+    
+    
+            marker_b117cde8863cd45dd767ca5caf90e9bf.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 60
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_b117cde8863cd45dd767ca5caf90e9bf.setIcon(icon_97282b37e7a9777da172b78a3f5c81a9);
+            
+    
+            var circle_5eeac2b325f025f85d49ffe4017fe663 = L.circle(
+                [40.95120838819276, 29.2900754188337],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_66802e63f8f81df65fffbda2f0b8f171 = L.marker(
+                [40.95496181004607, 29.29615807880041],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_3ccfffe99d6c6025878da949b6704a39 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_62412b94bbf49d4ffc012b3497d7ca5b = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_786ced1623ce3d22715498d9090f0714 = $(`<div id="html_786ced1623ce3d22715498d9090f0714" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 70)<br>Mahalle: MECİDİYE</div>`)[0];
+                popup_62412b94bbf49d4ffc012b3497d7ca5b.setContent(html_786ced1623ce3d22715498d9090f0714);
+            
+        
+
+        marker_66802e63f8f81df65fffbda2f0b8f171.bindPopup(popup_62412b94bbf49d4ffc012b3497d7ca5b)
+        ;
+
+        
+    
+    
+            marker_66802e63f8f81df65fffbda2f0b8f171.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 70
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_66802e63f8f81df65fffbda2f0b8f171.setIcon(icon_3ccfffe99d6c6025878da949b6704a39);
+            
+    
+            var circle_09077787accd374aaddea4f1a2f333c6 = L.circle(
+                [40.95496181004607, 29.29615807880041],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_b601f586f975196c70796eb2d503f4d4 = L.marker(
+                [40.96163014379557, 29.26442884010378],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_c1f5b3ac753321cf438f2cbdb9652a40 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_39f09c622fe03b4faaafacf395991f80 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_bbfb368b8b58ed440c47f3aa83c4f536 = $(`<div id="html_bbfb368b8b58ed440c47f3aa83c4f536" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 83)<br>Mahalle: MEHMET AKİF</div>`)[0];
+                popup_39f09c622fe03b4faaafacf395991f80.setContent(html_bbfb368b8b58ed440c47f3aa83c4f536);
+            
+        
+
+        marker_b601f586f975196c70796eb2d503f4d4.bindPopup(popup_39f09c622fe03b4faaafacf395991f80)
+        ;
+
+        
+    
+    
+            marker_b601f586f975196c70796eb2d503f4d4.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 83
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_b601f586f975196c70796eb2d503f4d4.setIcon(icon_c1f5b3ac753321cf438f2cbdb9652a40);
+            
+    
+            var circle_ad02b00873a3c2340c91a0b24a2b1e90 = L.circle(
+                [40.96163014379557, 29.26442884010378],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var marker_38bcfa0af58dd24f1e94ecbaf419cd3a = L.marker(
+                [40.96375418816064, 29.2652914567751],
+                {
+}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+    
+            var icon_96191b7de68af609d0347c5b8e8b2229 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4416e18245e1fc262bb21434ca6bc35a = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_9468b7f3d00913eff77d8ddad278fd97 = $(`<div id="html_9468b7f3d00913eff77d8ddad278fd97" style="width: 100.0%; height: 100.0%;">YENİ Seçilen Konteyner (No: 88)<br>Mahalle: MEHMET AKİF</div>`)[0];
+                popup_4416e18245e1fc262bb21434ca6bc35a.setContent(html_9468b7f3d00913eff77d8ddad278fd97);
+            
+        
+
+        marker_38bcfa0af58dd24f1e94ecbaf419cd3a.bindPopup(popup_4416e18245e1fc262bb21434ca6bc35a)
+        ;
+
+        
+    
+    
+            marker_38bcfa0af58dd24f1e94ecbaf419cd3a.bindTooltip(
+                `<div>
+                     Yeni Seçilen: 88
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_38bcfa0af58dd24f1e94ecbaf419cd3a.setIcon(icon_96191b7de68af609d0347c5b8e8b2229);
+            
+    
+            var circle_4738dadbb436955365b4b42eb9e6ac96 = L.circle(
+                [40.96375418816064, 29.2652914567751],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 800, "stroke": true, "weight": 1}
+            ).addTo(map_8a8f4963ee500c5ceaf7b3ba9f04bf8b);
+        
+</script>
+</html>

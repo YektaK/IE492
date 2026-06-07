@@ -18,16 +18,8 @@ import numpy as np
 import pandas as pd
 import pulp
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data" / "processed"
-RESULTS_DIR = PROJECT_ROOT / "results" / "models"
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-def norm_mahalle(s: str) -> str:
-    if not isinstance(s, str):
-        return ""
-    tr = str.maketrans({"Ç": "C", "Ğ": "G", "İ": "I", "Ö": "O", "Ş": "S", "Ü": "U", "ç": "C", "ğ": "G", "ı": "I", "ö": "O", "ş": "S", "ü": "U"})
-    return s.strip().translate(tr).upper()
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from config import norm_mahalle, PROJECT_ROOT, DATA_DIR, MODELS_DIR as RESULTS_DIR
 
 def run_mclp(S=800, K_TOTAL=20, weight_type="population", KEPT_MEVCUT=None, FIXED_ADAY=None):
     if KEPT_MEVCUT is None:

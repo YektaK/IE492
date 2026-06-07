@@ -1,0 +1,22 @@
+{
+    "run_id": "Run_20260607_195358_05ip_K20_Bastan_population_b30",
+    "timestamp": "20260607_195358",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "population",
+        "beta": 0.3,
+        "sigma": "Adaptive",
+        "kept_mevcut": [],
+        "fixed_aday": [],
+        "scenario_tag": "Bastan",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b30_K20_t0.15_nomez_population.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b30_K20_t0.15_nomez_population.xlsx",
+        "map_file": "Run_20260607_195358_05ip_K20_Bastan_population_b30_map.html",
+        "chart_file": "Run_20260607_195358_05ip_K20_Bastan_population_b30_coverage.png"
+    },
+    "stdout": "== 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.3, sigma=Adaptive_0.15, weight=population, KeptMevcut=0, FixedAday=0) ==\n  -> TOPSIS     / Baseline                  / SA ... Z=35.494, RxC=33.300, min_cov=1.908\n  -> TOPSIS     / DamageFocused             / SA ... Z=35.492, RxC=33.153, min_cov=1.405\n  -> TOPSIS     / InfrastructureFocused     / SA ... Z=35.678, RxC=33.119, min_cov=1.584\n  -> PROMETHEE  / Baseline                  / SA ... Z=36.767, RxC=33.098, min_cov=1.584\n  -> PROMETHEE  / DamageFocused             / SA ... Z=36.661, RxC=33.300, min_cov=1.908\n  -> PROMETHEE  / InfrastructureFocused     / SA ... Z=36.987, RxC=33.119, min_cov=1.584\n  -> VIKOR      / Baseline                  / SA ... Z=35.799, RxC=33.189, min_cov=1.713\n  -> VIKOR      / DamageFocused             / SA ... Z=35.807, RxC=33.153, min_cov=1.405\n  -> VIKOR      / InfrastructureFocused     / SA ... Z=36.820, RxC=33.119, min_cov=1.584\n  -> ELECTRE    / Baseline                  / SA ... Z=36.995, RxC=33.198, min_cov=1.908\n  -> ELECTRE    / DamageFocused             / SA ... Z=36.961, RxC=33.300, min_cov=1.908\n  -> ELECTRE    / InfrastructureFocused     / SA ... Z=37.080, RxC=33.119, min_cov=1.584\n"
+}
