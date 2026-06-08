@@ -4,19 +4,16 @@ Sultanbeyli Konteyner Konum Secimi - Etkilesimli Harita ve Grafik Olusturucu
 """
 
 import pandas as pd
-from pathlib import Path
 import glob
 import sys
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
+import config
+from config import DATA_DIR as PROCESSED, MODELS_DIR, MAPS_DIR, CHARTS_DIR
+
+sys.path.insert(0, str(config.PROJECT_ROOT / "src"))
 
 from visualization import plot_solution_map, plot_coverage_bar
 
-MODELS_DIR = PROJECT_ROOT / "results" / "models"
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-MAPS_DIR = PROJECT_ROOT / "figures" / "maps"
-CHARTS_DIR = PROJECT_ROOT / "figures" / "charts"
 MAPS_DIR.mkdir(parents=True, exist_ok=True)
 CHARTS_DIR.mkdir(parents=True, exist_ok=True)
 

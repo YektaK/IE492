@@ -7,14 +7,14 @@ VIKOR'da Q_i 0'a yaklastikca iyidir. IP modeline (Maksimizasyon)
 uygun olmasi icin (1 - Q_i) skoru da uretilir.
 """
 
-from pathlib import Path
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-AHP_DIR = PROJECT_ROOT / "results" / "ahp"
-MCDM_DIR = PROJECT_ROOT / "results" / "mcdm"
+import config
+from config import DATA_DIR as PROCESSED, RESULTS_DIR
+
+AHP_DIR = RESULTS_DIR / "ahp"
+MCDM_DIR = RESULTS_DIR / "mcdm"
 
 KRITER_SUTUNLARI = ["C1_hasar_risk_amp", "C2_lojistik_amp", "C3_bosluk_amp", "C4_barinma_amp"]
 # Siralama: Nufus, Deprem_Riski, Erisilebilirlik, Ulasim

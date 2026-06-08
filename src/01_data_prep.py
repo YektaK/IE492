@@ -12,17 +12,17 @@ from __future__ import annotations
 
 import os
 import shutil
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+import config
+from config import PROJECT_ROOT, DATA_DIR as PROCESSED
+
 # ---------------------------------------------------------------------------
-# 0) YOL TANIMLARI
+# 0) YOL TANIMLARI (config'den alinmayan, sadece bu script'e ozel)
 # ---------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ARCHIVE_DATA = PROJECT_ROOT / "archive" / "old_output" / "data"
-PROCESSED = PROJECT_ROOT / "data" / "processed"
 SCENARIOS = PROJECT_ROOT / "data" / "scenarios"
 RAW_DIRS = [
     PROJECT_ROOT / "data" / "raw" / "ibb_deprem_raporu",

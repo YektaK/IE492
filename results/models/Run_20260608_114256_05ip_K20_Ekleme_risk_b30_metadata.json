@@ -1,0 +1,35 @@
+{
+    "run_id": "Run_20260608_114256_05ip_K20_Ekleme_risk_b30",
+    "timestamp": "20260608_114256",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "risk",
+        "beta": 0.3,
+        "sigma": "Adaptive",
+        "kept_mevcut": [
+            0,
+            2,
+            3,
+            5,
+            7,
+            8,
+            9,
+            10,
+            11
+        ],
+        "fixed_aday": [
+            5
+        ],
+        "scenario_tag": "Ekleme",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b30_K20_t0.15_risk.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b30_K20_t0.15_risk.xlsx",
+        "result_file": "results\\models\\summary_all_SA_sgAdaptive_b30_K20_t0.15_risk.xlsx",
+        "map_file": "Run_20260608_114256_05ip_K20_Ekleme_risk_b30_map.html",
+        "chart_file": "Run_20260608_114256_05ip_K20_Ekleme_risk_b30_coverage.png"
+    },
+    "stdout": "2026-06-08 11:42:45,600 [INFO] IE492:run_ip_model:52 == 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.3, sigma=Adaptive_0.15, weight=risk, KeptMevcut=9, FixedAday=1) ==\n2026-06-08 11:42:47,821 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:48,189 [INFO] IE492:run_ip_model:183   -> TOPSIS     / Baseline                  / SA ... Z=34.009, RxC=32.344, min_cov=0.995\n2026-06-08 11:42:48,753 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:48,832 [INFO] IE492:run_ip_model:183   -> TOPSIS     / DamageFocused             / SA ... Z=34.121, RxC=32.344, min_cov=0.995\n2026-06-08 11:42:49,422 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:49,514 [INFO] IE492:run_ip_model:183   -> TOPSIS     / InfrastructureFocused     / SA ... Z=33.848, RxC=32.271, min_cov=0.995\n2026-06-08 11:42:50,080 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:50,156 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / Baseline                  / SA ... Z=34.672, RxC=32.344, min_cov=0.995\n2026-06-08 11:42:50,758 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:50,870 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / DamageFocused             / SA ... Z=34.699, RxC=32.344, min_cov=0.995\n2026-06-08 11:42:51,425 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:51,503 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / InfrastructureFocused     / SA ... Z=34.624, RxC=32.271, min_cov=0.995\n2026-06-08 11:42:52,106 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:52,176 [INFO] IE492:run_ip_model:183   -> VIKOR      / Baseline                  / SA ... Z=34.236, RxC=32.344, min_cov=0.995\n2026-06-08 11:42:52,743 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:52,824 [INFO] IE492:run_ip_model:183   -> VIKOR      / DamageFocused             / SA ... Z=34.392, RxC=32.401, min_cov=0.995\n2026-06-08 11:42:53,405 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:53,478 [INFO] IE492:run_ip_model:183   -> VIKOR      / InfrastructureFocused     / SA ... Z=34.474, RxC=32.149, min_cov=0.995\n2026-06-08 11:42:54,045 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:54,126 [INFO] IE492:run_ip_model:183   -> ELECTRE    / Baseline                  / SA ... Z=34.736, RxC=32.344, min_cov=0.995\n2026-06-08 11:42:54,717 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:54,797 [INFO] IE492:run_ip_model:183   -> ELECTRE    / DamageFocused             / SA ... Z=34.772, RxC=32.344, min_cov=0.995\n2026-06-08 11:42:55,359 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 11:42:55,450 [INFO] IE492:run_ip_model:183   -> ELECTRE    / InfrastructureFocused     / SA ... Z=34.615, RxC=32.271, min_cov=0.995\n"
+}

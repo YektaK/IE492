@@ -1,0 +1,70 @@
+2026-06-08 11:42:45,600 [INFO] IE492:run_ip_model:52 == 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.3, sigma=Adaptive_0.15, weight=risk, KeptMevcut=9, FixedAday=1) ==
+2026-06-08 11:42:47,821 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:48,189 [INFO] IE492:run_ip_model:183   -> TOPSIS     / Baseline                  / SA ... Z=34.009, RxC=32.344, min_cov=0.995
+2026-06-08 11:42:48,753 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:48,832 [INFO] IE492:run_ip_model:183   -> TOPSIS     / DamageFocused             / SA ... Z=34.121, RxC=32.344, min_cov=0.995
+2026-06-08 11:42:49,422 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:49,514 [INFO] IE492:run_ip_model:183   -> TOPSIS     / InfrastructureFocused     / SA ... Z=33.848, RxC=32.271, min_cov=0.995
+2026-06-08 11:42:50,080 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:50,156 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / Baseline                  / SA ... Z=34.672, RxC=32.344, min_cov=0.995
+2026-06-08 11:42:50,758 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:50,870 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / DamageFocused             / SA ... Z=34.699, RxC=32.344, min_cov=0.995
+2026-06-08 11:42:51,425 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:51,503 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / InfrastructureFocused     / SA ... Z=34.624, RxC=32.271, min_cov=0.995
+2026-06-08 11:42:52,106 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:52,176 [INFO] IE492:run_ip_model:183   -> VIKOR      / Baseline                  / SA ... Z=34.236, RxC=32.344, min_cov=0.995
+2026-06-08 11:42:52,743 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:52,824 [INFO] IE492:run_ip_model:183   -> VIKOR      / DamageFocused             / SA ... Z=34.392, RxC=32.401, min_cov=0.995
+2026-06-08 11:42:53,405 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:53,478 [INFO] IE492:run_ip_model:183   -> VIKOR      / InfrastructureFocused     / SA ... Z=34.474, RxC=32.149, min_cov=0.995
+2026-06-08 11:42:54,045 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:54,126 [INFO] IE492:run_ip_model:183   -> ELECTRE    / Baseline                  / SA ... Z=34.736, RxC=32.344, min_cov=0.995
+2026-06-08 11:42:54,717 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:54,797 [INFO] IE492:run_ip_model:183   -> ELECTRE    / DamageFocused             / SA ... Z=34.772, RxC=32.344, min_cov=0.995
+2026-06-08 11:42:55,359 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 11:42:55,450 [INFO] IE492:run_ip_model:183   -> ELECTRE    / InfrastructureFocused     / SA ... Z=34.615, RxC=32.271, min_cov=0.995
+2026-06-08 12:14:40,051 [INFO] IE492:main:54 == Pareto Analizi Basliyor (K_Total=20, Sigma=Adaptive, Weight=risk, mcdm=TOPSIS/Baseline) ==
+2026-06-08 12:14:40,427 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:40,523 [INFO] IE492:main:157   eps=0.800 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:40,700 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:40,768 [INFO] IE492:main:157   eps=0.821 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:40,920 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:40,988 [INFO] IE492:main:157   eps=0.842 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:41,369 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:41,466 [INFO] IE492:main:157   eps=0.863 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:42,079 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:42,164 [INFO] IE492:main:157   eps=0.884 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:42,779 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:42,886 [INFO] IE492:main:157   eps=0.905 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:43,448 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:43,539 [INFO] IE492:main:157   eps=0.926 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:44,154 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:44,245 [INFO] IE492:main:157   eps=0.947 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:44,805 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:44,897 [INFO] IE492:main:157   eps=0.968 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:45,529 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:45,618 [INFO] IE492:main:157   eps=0.989 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599
+2026-06-08 12:14:46,216 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:46,333 [INFO] IE492:main:157   eps=1.011 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:46,911 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:47,012 [INFO] IE492:main:157   eps=1.032 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:47,648 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:47,753 [INFO] IE492:main:157   eps=1.053 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:48,339 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:48,434 [INFO] IE492:main:157   eps=1.074 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:49,071 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:49,177 [INFO] IE492:main:157   eps=1.095 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:49,781 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:49,893 [INFO] IE492:main:157   eps=1.116 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:50,507 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:50,610 [INFO] IE492:main:157   eps=1.137 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:51,218 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:51,320 [INFO] IE492:main:157   eps=1.158 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:51,913 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:52,031 [INFO] IE492:main:157   eps=1.179 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:52,626 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).
+2026-06-08 12:14:52,722 [INFO] IE492:main:157   eps=1.200 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331
+2026-06-08 12:14:53,718 [INFO] IE492:main:190 
+[+] Pareto grafıgi kaydedildi: C:\Users\yektakayman\Desktop\AiCode\IE492\results\eps_constraint\pareto_front_SA_sgAdaptive_b30_K20_risk_topsis_baseline.png
+2026-06-08 12:14:53,719 [INFO] IE492:main:192 [+] Sonuclar Excel'e kaydedildi: C:\Users\yektakayman\Desktop\AiCode\IE492\results\eps_constraint\pareto_results_SA_sgAdaptive_b30_K20_risk_topsis_baseline.xlsx
+2026-06-08 12:14:53,719 [INFO] IE492:main:193 == 13_eps_constraint.py tamamlandi ==

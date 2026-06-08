@@ -7,6 +7,13 @@ import sys
 import subprocess
 import time
 import json
+import tempfile
+import shutil
+import threading
+
+
+
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
@@ -48,25 +55,31 @@ button[data-baseweb="tab"] {
 
 
 # Veri Yolları ve Konfigürasyon
-from config import DATA_DIR, RESULTS_DIR, MODELS_DIR, MAPS_DIR, CHARTS_DIR, JOBS_FILE, norm_mahalle
+from config import DATA_DIR, RESULTS_DIR, MODELS_DIR, MAPS_DIR, CHARTS_DIR, JOBS_FILE, norm_mahalle, get_mevcut_indices, logger
 from app_runner import build_solver_command, find_solver_outputs, pareto_file_suffix, project_relative, variant_output_paths
 
 # ==========================================
 # VERİ YÜKLEMELERİ
 # ==========================================
-@st.cache_data
+@st.cache_data(ttl=3600)
 def load_data():
     adaylar = pd.read_excel(DATA_DIR / "adaylar_140.xlsx")
     mevcut = pd.read_excel(DATA_DIR / "mevcut_12.xlsx")
     return adaylar, mevcut
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def load_profile_data():
     df_nuf = pd.read_excel(DATA_DIR / "mahalle_nufus.xlsx")
     df_risk = pd.read_excel(DATA_DIR / "mahalle_risk.xlsx")
     df_bar = pd.read_excel(DATA_DIR / "mahalle_barinma.xlsx")
     df_mevcut = pd.read_excel(DATA_DIR / "mevcut_12.xlsx")
     return df_nuf, df_risk, df_bar, df_mevcut
+
+def _atomic_write_json(path: Path, data):
+    tmp = path.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    shutil.move(str(tmp), str(path))
 
 def load_jobs():
     if JOBS_FILE.exists():
@@ -75,8 +88,7 @@ def load_jobs():
     return []
 
 def save_jobs(jobs):
-    with open(JOBS_FILE, "w", encoding="utf-8") as f:
-        json.dump(jobs, f, indent=4, ensure_ascii=False)
+    _atomic_write_json(JOBS_FILE, jobs)
 
 def weight_label(w):
     return {"risk": "Deprem Riski (İBB)", "population": "Gece Nüfusu", "shelter": "Barınma İhtiyacı"}.get(w, w)
@@ -89,9 +101,9 @@ def get_sigma_radius(val):
 
 MODEL_OPTIONS = {
     "05_ip": {"label": "Ana IP Modeli (12 MCDM Varyantı)", "script": "05_ip.py", "has_kept": True, "has_fixed": True, "has_beta": True, "has_sigma": True, "k_is_total": True, "weights": ["risk", "population", "shelter"]},
-    "11_lex": {"label": "Lexicographic Max-Min (Adalet Odaklı)", "script": "11_lexicographic.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False, "weights": ["risk", "population"]},
-    "13_eps": {"label": "ε-Constraint (Pareto Cephesi)", "script": "13_eps_constraint.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False, "weights": ["risk", "population"]},
-    "14_single": {"label": "Single-Stage MILP (Entegre Equity)", "script": "14_single_stage.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False, "weights": ["risk", "population"]},
+    "11_lex": {"label": "Lexicographic Max-Min (Adalet Odaklı)", "script": "11_lexicographic.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "has_mcdm": True, "k_is_total": False, "weights": ["risk", "population"]},
+    "13_eps": {"label": "ε-Constraint (Pareto Cephesi)", "script": "13_eps_constraint.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "has_mcdm": True, "k_is_total": False, "weights": ["risk", "population"]},
+    "14_single": {"label": "Single-Stage MILP (Entegre Equity)", "script": "14_single_stage.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "has_mcdm": True, "k_is_total": False, "weights": ["risk", "population"]},
     "16_mclp": {"label": "MCLP Benchmark (Klasik Kapsama)", "script": "16_mclp.py", "has_kept": False, "has_fixed": False, "has_beta": False, "has_sigma": False, "k_is_total": False, "weights": ["risk", "population", "shelter"]}
 }
 
@@ -104,7 +116,10 @@ def run_single_job(job, progress_callback=None):
     except ValueError as exc:
         return {"success": False, "error": str(exc), "stdout": ""}
     
-    res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=600)
+    except subprocess.TimeoutExpired as e:
+        return {"success": False, "error": f"Solver timed out after 600s", "stdout": e.output.decode() if e.output else ""}
     
     if res.returncode != 0:
         return {"success": False, "error": res.stderr, "stdout": res.stdout}
@@ -143,8 +158,12 @@ def run_single_job(job, progress_callback=None):
                 kept_df = pd.DataFrame()
                 removed_df = mevcut_full.copy()
             
-            fixed_df = pd.DataFrame()  # Gelecekte genişletilebilir
-            
+            fixed_aday_list = job.get('fixed_aday', [])
+            if fixed_aday_list and "S_No" in yeni_df.columns:
+                fixed_df = yeni_df[yeni_df["S_No"].isin(fixed_aday_list)].copy()
+            else:
+                fixed_df = pd.DataFrame()
+
             cov_df_run = None
             if cov_path.exists():
                 cov_df_run = pd.read_excel(cov_path)
@@ -183,7 +202,7 @@ def run_single_job(job, progress_callback=None):
                                   title=f"Kapsama vs {weight_label(job['weight_type'])}")
                 chart_file = f"{prefix}_coverage.png"
         except Exception as e:
-            pass  # Görselleştirme hatası modeli durdurmaz
+            logger.warning(f"Görselleştirme hatası (model devam ediyor): {e}")
     
     # Metadata kaydet
     meta = {
@@ -216,12 +235,131 @@ def run_single_job(job, progress_callback=None):
     return {"success": True, "meta": meta, "stdout": res.stdout}
 
 
+def _set_notification(msg: str, type: str = "success"):
+    st.session_state["_notification"] = {"msg": msg, "type": type}
+
+def _show_notification():
+    n = st.session_state.pop("_notification", None)
+    if n:
+        fn = {"success": st.success, "info": st.info, "warning": st.warning, "error": st.error}.get(n["type"], st.success)
+        fn(n["msg"])
+
+# ==========================================
+# BACKGROUND THREAD HELPERS
+# ==========================================
+if "bg_single" not in st.session_state:
+    st.session_state.bg_single = None
+if "bg_queue" not in st.session_state:
+    st.session_state.bg_queue = None
+
+def _run_single_bg(job_def, container):
+    """Thread target: execute one solver job."""
+    try:
+        result = run_single_job(job_def)
+        container["result"] = result
+    except Exception as e:
+        container["error"] = str(e)
+    finally:
+        container["done"] = True
+
+def _run_queue_bg(jobs, container):
+    """Thread target: execute all jobs in queue."""
+    from config import COMPLETED_JOBS_FILE
+    completed_runs = []
+    if COMPLETED_JOBS_FILE.exists():
+        try:
+            with open(COMPLETED_JOBS_FILE, "r", encoding="utf-8") as f:
+                completed_runs = json.load(f)
+        except Exception:
+            completed_runs = []
+    completed = 0
+    errors = 0
+    for idx, job in enumerate(jobs):
+        container["current"] = idx + 1
+        container["total"] = len(jobs)
+        container["current_label"] = f"{weight_label(job['weight_type'])} | K={job['k_total']} | β={job['beta']}"
+        t_start = time.time()
+        try:
+            result = run_single_job(job)
+            elapsed = time.time() - t_start
+            success_flag = bool(result["success"])
+            err_msg = "" if result["success"] else result.get("error", "Bilinmeyen hata")
+        except Exception as ex:
+            elapsed = time.time() - t_start
+            success_flag = False
+            err_msg = str(ex)
+        if success_flag:
+            completed += 1
+        else:
+            errors += 1
+        completed_runs.append({
+            "id": job["id"],
+            "model": job.get("model", "05_ip"),
+            "k_total": job["k_total"],
+            "weight_type": job["weight_type"],
+            "beta": job["beta"],
+            "sigma": job["sigma"],
+            "kept_mevcut": job["kept_mevcut"],
+            "fixed_aday": job.get("fixed_aday", []),
+            "success": success_flag,
+            "error": err_msg,
+            "duration_s": elapsed,
+            "execution_time": time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+        try:
+            _atomic_write_json(COMPLETED_JOBS_FILE, completed_runs)
+        except Exception:
+            pass
+    container["completed"] = completed
+    container["errors"] = errors
+    container["completed_runs"] = completed_runs
+    container["done"] = True
+
+def _poll_bg_single():
+    """Check if a running single job completed. Returns None or result dict."""
+    bg = st.session_state.bg_single
+    if bg is None:
+        return None
+    if bg["container"]["done"]:
+        st.session_state.bg_single = None
+        return bg
+    elapsed = time.time() - bg["start"]
+    st.info(f"⏳ Model çözülüyor... ({elapsed:.0f}s geçti)")
+    time.sleep(1)
+    st.rerun()
+    return None
+
+def _poll_bg_queue():
+    """Check if running queue completed. Returns None or completion dict."""
+    bg = st.session_state.bg_queue
+    if bg is None:
+        return None
+    c = bg["container"]
+    if c["done"]:
+        st.session_state.bg_queue = None
+        return bg
+    elapsed = time.time() - bg["start"]
+    if c["total"] > 0:
+        pct = c["current"] / c["total"]
+        st.progress(pct)
+        st.info(f"⏳ İşleniyor: {c['current']}/{c['total']} ({elapsed:.0f}s) — {c.get('current_label', '')}")
+    else:
+        st.info(f"⏳ Hazırlanıyor... ({elapsed:.0f}s)")
+    time.sleep(1)
+    st.rerun()
+    return None
+
 # ==========================================
 # ANA UYGULAMA
 # ==========================================
 adaylar, mevcut = load_data()
 
 st.title("🏗️ Sultanbeyli Acil Durum Konteyner Optimizasyonu")
+_show_notification()
+
+# Background job polling
+bg_single_done = _poll_bg_single()
+bg_queue_done = _poll_bg_queue()
 
 tab_single, tab_queue, tab_results, tab_compare, tab_sensitivity, tab_profile = st.tabs([
     "1. Deney Tasarımı", 
@@ -314,16 +452,22 @@ with tab_single:
         
         with col_btn1:
             if st.button("▶️ Hemen Çalıştır", type="primary"):
-                with st.spinner("Model çözülüyor..."):
-                    result = run_single_job(job_def)
-                if result["success"]:
+                container = {"done": False, "result": None, "error": None}
+                t = threading.Thread(target=_run_single_bg, args=(job_def, container), daemon=True)
+                t.start()
+                st.session_state.bg_single = {"container": container, "start": time.time(), "job_def": job_def}
+                st.rerun()
+
+            if bg_single_done is not None:
+                c = bg_single_done["container"]
+                result = c.get("result")
+                if result is not None and result["success"]:
                     st.success("✅ Model başarıyla çözüldü!")
                     with st.expander("Terminal Çıktısı", expanded=True):
                         st.code(result["stdout"])
                     st.info("📊 Sonuçlar sekmesinden harita ve tabloları inceleyebilirsiniz.")
                 else:
-                    st.error("❌ Model çözülürken hata oluştu!")
-                    st.code(result.get("error", "Bilinmeyen hata"))
+                    st.error(f"❌ Model çözülürken hata oluştu! {c.get('error', '') or result.get('error', '')}")
                     
         with col_btn2:
             if st.button("📋 Kuyruğa Ekle"):
@@ -376,7 +520,7 @@ with tab_queue:
                         "weight_type": w,
                         "beta": b,
                         "sigma": "Adaptive",
-                        "kept_mevcut": list(range(12)),
+                        "kept_mevcut": get_mevcut_indices(),
                         "fixed_aday": []
                     })
                     # Senaryo 2: K=20, sıfırdan kurulum
@@ -392,85 +536,30 @@ with tab_queue:
             
             jobs.extend(new_jobs)
             save_jobs(jobs)
-            st.success(f"{len(new_jobs)} standart tez deneyi kuyruğa eklendi!")
+            _set_notification(f"{len(new_jobs)} standart tez deneyi kuyruğa eklendi!")
             st.rerun()
             
         if st.button("🗑️ Kuyruğu Temizle"):
             save_jobs([])
-            st.success("Kuyruk temizlendi.")
+            _set_notification("Kuyruk temizlendi.")
             st.rerun()
             
     if jobs:
         st.markdown("---")
         if st.button("🚀 Kuyruğu Çalıştır (Tüm İşler)", type="primary"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            log_area = st.empty()
-            
-            # Load completed jobs log
-            from config import COMPLETED_JOBS_FILE
-            completed_runs = []
-            if COMPLETED_JOBS_FILE.exists():
-                try:
-                    with open(COMPLETED_JOBS_FILE, "r", encoding="utf-8") as f:
-                        completed_runs = json.load(f)
-                except Exception:
-                    completed_runs = []
+            container = {"done": False, "current": 0, "total": len(jobs), "current_label": ""}
+            t = threading.Thread(target=_run_queue_bg, args=(jobs, container), daemon=True)
+            t.start()
+            st.session_state.bg_queue = {"container": container, "start": time.time()}
+            st.rerun()
 
-            completed = 0
-            errors = 0
-            
-            for idx, job in enumerate(jobs):
-                status_text.info(f"⏳ Çalışıyor ({idx+1}/{len(jobs)}): **{weight_label(job['weight_type'])}** | K={job['k_total']} | β={job['beta']}")
-                
-                t_start = time.time()
-                try:
-                    result = run_single_job(job)
-                    elapsed = time.time() - t_start
-                    
-                    if result["success"]:
-                        completed += 1
-                        success_flag = True
-                        err_msg = ""
-                    else:
-                        errors += 1
-                        success_flag = False
-                        err_msg = result.get("error", "Bilinmeyen hata")
-                except Exception as ex:
-                    errors += 1
-                    elapsed = time.time() - t_start
-                    success_flag = False
-                    err_msg = str(ex)
-                    
-                # Append to completed runs
-                completed_runs.append({
-                    "id": job["id"],
-                    "model": job.get("model", "05_ip"),
-                    "k_total": job["k_total"],
-                    "weight_type": job["weight_type"],
-                    "beta": job["beta"],
-                    "sigma": job["sigma"],
-                    "kept_mevcut": job["kept_mevcut"],
-                    "fixed_aday": job.get("fixed_aday", []),
-                    "success": success_flag,
-                    "error": err_msg,
-                    "duration_s": elapsed,
-                    "execution_time": time.strftime("%Y-%m-%d %H:%M:%S")
-                })
-                
-                # Write back immediately
-                try:
-                    with open(COMPLETED_JOBS_FILE, "w", encoding="utf-8") as f:
-                        json.dump(completed_runs, f, indent=4, ensure_ascii=False)
-                except Exception:
-                    pass
-                    
-                progress_bar.progress((idx + 1) / len(jobs))
-                
+        if bg_queue_done is not None:
+            c = bg_queue_done["container"]
+            completed = c.get("completed", 0)
+            errors = c.get("errors", 0)
             # Kuyruk temizle
             save_jobs([])
-            st.success(f"İşlemler tamamlandı! Başarılı: {completed}, Hatalı: {errors}")
-            st.rerun()
+            _set_notification(f"İşlemler tamamlandı! Başarılı: {completed}, Hatalı: {errors}")
 
     # Completed jobs history panel
     from config import COMPLETED_JOBS_FILE
@@ -504,9 +593,8 @@ with tab_queue:
             
             if st.button("🗑️ Çalıştırma Geçmişini Temizle"):
                 try:
-                    with open(COMPLETED_JOBS_FILE, "w", encoding="utf-8") as f:
-                        json.dump([], f)
-                    st.success("Çalıştırma geçmişi temizlendi.")
+                    _atomic_write_json(COMPLETED_JOBS_FILE, [])
+                    _set_notification("Çalıştırma geçmişi temizlendi.")
                     st.rerun()
                 except Exception as ex:
                     st.error(f"Geçmiş temizlenirken hata: {ex}")
@@ -619,10 +707,14 @@ with tab_results:
             
             # MCDM Skor Tablosunu yükle
             df_sum = pd.DataFrame()
+            vname, mcdm_sel, scen_sel = None, None, None  # Initialize before if block
             if files.get("summary_file"):
                 sum_path = MODELS_DIR / files["summary_file"]
                 if sum_path.exists():
-                    df_sum = pd.read_excel(sum_path)
+                    try:
+                        df_sum = pd.read_excel(sum_path)
+                    except Exception as e:
+                        st.warning(f"Özet dosyası okunurken hata: {e}")
             
             if not df_sum.empty:
                 st.markdown("#### 📊 Model / Karar Varyantı Seçimi")
@@ -720,7 +812,11 @@ with tab_results:
                             kept_df = pd.DataFrame()
                             removed_df = mevcut_full.copy()
                             
-                        fixed_df = pd.DataFrame()
+                        fixed_aday_list = params.get("fixed_aday", [])
+                        if fixed_aday_list and "S_No" in yeni_df.columns:
+                            fixed_df = yeni_df[yeni_df["S_No"].isin(fixed_aday_list)].copy()
+                        else:
+                            fixed_df = pd.DataFrame()
                         
                         temp_map_path = RESULTS_DIR / "temp_detail_map.html"
                         
@@ -814,8 +910,9 @@ with tab_results:
                 )
                 
                 if radar_selections:
-                    import plotly.graph_objects as go
-                    
+
+
+
                     fig_radar = go.Figure()
                     categories = ['Amaç Değeri (Z)', 'Toplam Fayda (RxC)', 'Min Kapsama (Eşitlik)', 'Ortalama Kapsama', 'Adalet Seviyesi (1-Gini)']
                     
@@ -891,7 +988,6 @@ with tab_results:
                     df_pareto_opt = df_pareto[df_pareto["status"] == "Optimal"].drop_duplicates(subset=["RxC", "actual_min_cov"])
                     
                     if not df_pareto_opt.empty:
-                        import plotly.express as px
                         if "avg_cov" in df_pareto_opt.columns:
                             fig_pareto = px.scatter_3d(
                                 df_pareto_opt,
@@ -947,7 +1043,7 @@ with tab_results:
                             str(MODELS_DIR / f"{selected_id}_metadata.json"),
                             str(pdf_path)
                         ]
-                        res_pdf = subprocess.run(cmd_pdf, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+                        res_pdf = subprocess.run(cmd_pdf, capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=120)
                         if res_pdf.returncode == 0:
                             st.success("✅ PDF raporu başarıyla oluşturuldu!")
                         else:
@@ -964,38 +1060,39 @@ with tab_results:
                         mime="application/pdf"
                     )
 
-            # Excel Rapor Butonu
-            st.markdown("---")
-            st.markdown("### 📥 Excel Çözüm Raporu (Çok Sayfalı)")
-            excel_path = RESULTS_DIR / f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx"
-            
-            col_xls1, col_xls2 = st.columns(2)
-            with col_xls1:
-                if st.button("📊 Excel Raporu Oluştur / Güncelle"):
-                    with st.spinner("Excel oluşturuluyor..."):
-                        try:
-                            from excel_report_generator import generate_excel_report
-                            generate_excel_report(
-                                MODELS_DIR / f"{selected_id}_metadata.json",
-                                excel_path,
-                                vname,
-                                mcdm_sel,
-                                scen_sel
-                            )
-                            st.success("✅ Excel raporu başarıyla oluşturuldu!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Excel oluşturulurken hata: {e}")
-            with col_xls2:
-                if excel_path.exists():
-                    with open(excel_path, "rb") as f:
-                        xls_data = f.read()
-                    st.download_button(
-                        label="📥 Excel Raporunu İndir",
-                        data=xls_data,
-                        file_name=f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+            # Excel Rapor Butonu (yalnızca varyant seçildiyse göster)
+            if vname is not None and mcdm_sel is not None and scen_sel is not None:
+                st.markdown("---")
+                st.markdown("### 📥 Excel Çözüm Raporu (Çok Sayfalı)")
+                excel_path = RESULTS_DIR / f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx"
+                
+                col_xls1, col_xls2 = st.columns(2)
+                with col_xls1:
+                    if st.button("📊 Excel Raporu Oluştur / Güncelle"):
+                        with st.spinner("Excel oluşturuluyor..."):
+                            try:
+                                from excel_report_generator import generate_excel_report
+                                generate_excel_report(
+                                    MODELS_DIR / f"{selected_id}_metadata.json",
+                                    excel_path,
+                                    vname,
+                                    mcdm_sel,
+                                    scen_sel
+                                )
+                                _set_notification("Excel raporu başarıyla oluşturuldu!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Excel oluşturulurken hata: {e}")
+                with col_xls2:
+                    if excel_path.exists():
+                        with open(excel_path, "rb") as f:
+                            xls_data = f.read()
+                        st.download_button(
+                            label="📥 Excel Raporunu İndir",
+                            data=xls_data,
+                            file_name=f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
             
             # Terminal çıktısı
             if data.get("stdout"):
@@ -1011,10 +1108,14 @@ with tab_results:
         
         if st.button("📄 Final Sentez Raporu Üret (FINAL_REPORT.xlsx + FINAL_RAPOR.md)", type="primary"):
             with st.spinner("Sentez yapılıyor..."):
-                res = subprocess.run(
-                    [sys.executable, str(PROJECT_ROOT / "src" / "07_reporting.py")],
-                    capture_output=True, text=True, cwd=str(PROJECT_ROOT)
-                )
+                try:
+                    res = subprocess.run(
+                        [sys.executable, str(PROJECT_ROOT / "src" / "07_reporting.py")],
+                        capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=300
+                    )
+                except subprocess.TimeoutExpired:
+                    st.error("Sentez raporu üretimi zaman aşımına uğradı (300sn).")
+                    st.stop()
             if res.returncode == 0:
                 st.success("✅ Sentez raporu başarıyla üretildi!")
                 st.code(res.stdout)
@@ -1106,7 +1207,6 @@ with tab_compare:
                         best_z = merged.groupby("run_label")["Z_total"].max().reset_index()
                         best_z = best_z.sort_values("Z_total", ascending=True)
                         
-                        import matplotlib.pyplot as plt
                         fig_z, ax_z = plt.subplots(figsize=(8, max(3, len(best_z)*0.6)))
                         colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(best_z)))
                         ax_z.barh(best_z["run_label"], best_z["Z_total"], color=colors, edgecolor="black", linewidth=0.5)
@@ -1123,7 +1223,6 @@ with tab_compare:
                         best_cov = merged.groupby("run_label")["min_mahalle_cov"].max().reset_index()
                         best_cov = best_cov.sort_values("min_mahalle_cov", ascending=True)
                         
-                        import matplotlib.pyplot as plt
                         fig_c, ax_c = plt.subplots(figsize=(8, max(3, len(best_cov)*0.6)))
                         colors_c = plt.cm.RdYlGn(np.linspace(0.3, 0.9, len(best_cov)))
                         ax_c.barh(best_cov["run_label"], best_cov["min_mahalle_cov"], color=colors_c, edgecolor="black", linewidth=0.5)
@@ -1139,7 +1238,6 @@ with tab_compare:
                 st.markdown("#### 🕸️ Koşumlar Arası Radar Karşılaştırma Analizi")
                 st.markdown("Seçilen tüm koşumların en iyi (Maksimum RxC) varyantlarının performanslarını kıyaslar:")
                 
-                import plotly.graph_objects as go
                 fig_radar_c = go.Figure()
                 categories_c = ['Maks Amaç Değeri (Z)', 'Maks Toplam Fayda (RxC)', 'Maks Min Kapsama', 'Maks Ort. Kapsama', 'Min Gini Eşitsizliği (Ters)']
                 
@@ -1278,7 +1376,7 @@ with tab_sensitivity:
                     "--grid",
                     "--weight", s_weight
                 ]
-                res_sens = subprocess.run(cmd_sens, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+                res_sens = subprocess.run(cmd_sens, capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=300)
                 
                 # 2. Tekil beta/K grafiklerini üret
                 cmd_charts = [
@@ -1288,10 +1386,10 @@ with tab_sensitivity:
                     "--beta", str(s_beta),
                     "--weight", s_weight
                 ]
-                res_charts = subprocess.run(cmd_charts, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+                res_charts = subprocess.run(cmd_charts, capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=300)
                 
                 if res_sens.returncode == 0 and res_charts.returncode == 0:
-                    st.success("✅ Hassasiyet analizi ve karar paneli başarıyla güncellendi!")
+                    _set_notification("Hassasiyet analizi ve karar paneli başarıyla güncellendi!")
                     st.rerun()
                 else:
                     st.error("Hassasiyet analizi çalışırken hata oluştu.")
@@ -1368,9 +1466,9 @@ with tab_sensitivity:
             col_g4.metric("Ortalama Kapsama", f"{rdata['avg_cov']*100:.1f}%")
             
             # İnteraktif Grafikler
-            import plotly.graph_objects as go
-            col_p1, col_p2 = st.columns(2)
-            
+
+
+
             with col_p1:
                 # Sabit K için beta değişimi
                 df_fixed_k = df_grid[df_grid["K"] == w_K].sort_values("beta")
@@ -1422,9 +1520,9 @@ with tab_sensitivity:
                     "--grid",
                     "--weight", s_weight
                 ]
-                res_grid = subprocess.run(cmd_grid, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+                res_grid = subprocess.run(cmd_grid, capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=300)
                 if res_grid.returncode == 0:
-                    st.success("✅ Hassasiyet grid önbelleği başarıyla oluşturuldu! Sayfayı yeniliyoruz...")
+                    _set_notification("Hassasiyet grid önbelleği başarıyla oluşturuldu!")
                     st.rerun()
                 else:
                     st.error("Grid hesaplanırken hata oluştu.")

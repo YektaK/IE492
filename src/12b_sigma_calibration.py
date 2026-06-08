@@ -10,11 +10,11 @@ Eger sigma cok kucukse, mevcutlar cok zayif kalir. Cok buyukse, her yer %100 olu
 from __future__ import annotations
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-FUZZY_COV_DIR = PROJECT_ROOT / "results" / "fuzzy_coverage"
+import config
+from config import DATA_DIR as PROCESSED, RESULTS_DIR
+
+FUZZY_COV_DIR = RESULTS_DIR / "fuzzy_coverage"
 FUZZY_COV_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------

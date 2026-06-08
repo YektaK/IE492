@@ -21,6 +21,8 @@ import time
 from pathlib import Path
 
 from scenario_utils import fuzzy_coverage_paths
+sys.path.insert(0, str(SRC))
+from config import get_mevcut_indices
 
 SRC = Path(__file__).resolve().parent
 ROOT = SRC.parent
@@ -40,7 +42,7 @@ STEPS_WITH_TRUNCATE = {"05_ip", "08_lscp", "11_lexicographic", "14_single_stage"
 def total_k_from_config(cfg: dict) -> int:
     """Convert config K (new containers) to total containers for scripts that need totals."""
     k_new = int(cfg.get("K", 8))
-    return k_new if cfg.get("no_mevcut", False) else k_new + 12
+    return k_new if cfg.get("no_mevcut", False) else k_new + len(get_mevcut_indices())
 
 
 def build_args(cfg: dict, step: str) -> list[str]:
@@ -84,14 +86,19 @@ def run(label: str, cmd: list[str]) -> bool:
     print(f"  [{label}] {' '.join(cmd)}")
     print("=" * 70)
     t0 = time.time()
-    r = subprocess.run(cmd, cwd=str(ROOT), capture_output=False)
-    dt = time.time() - t0
-    ok = r.returncode == 0
-    if ok:
-        print(f"  [OK] {dt:.1f}s")
-    else:
-        print(f"  !! HATA: returncode={r.returncode} ({dt:.1f}s)")
-    return ok
+    try:
+        r = subprocess.run(cmd, cwd=str(ROOT), capture_output=False, timeout=600)
+        dt = time.time() - t0
+        ok = r.returncode == 0
+        if ok:
+            print(f"  [OK] {dt:.1f}s")
+        else:
+            print(f"  !! HATA: returncode={r.returncode} ({dt:.1f}s)")
+        return ok
+    except subprocess.TimeoutExpired:
+        dt = time.time() - t0
+        print(f"  !! ZAMAN AŞIMI ({dt:.1f}s)")
+        return False
 
 
 def coverage_files_exist(sigma: str) -> bool:

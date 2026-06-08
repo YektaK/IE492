@@ -76,8 +76,8 @@ def solve_lscp(aday_mu: pd.DataFrame, mev_cov: dict[str, float],
             qi = Q_i_dict.get(mh, 1.0) if Q_i_dict else 1.0
             base = mev_cov.get(mh, 0.0)
             prob += (
-                qi * (pulp.lpSum(MU[(int(aday_mu.iloc[j]["S_No"]), mh)] * x[j]
-                                for j in j_range) + base) >= CRITICAL_MU,
+                qi * pulp.lpSum(MU[(int(aday_mu.iloc[j]["S_No"]), mh)] * x[j]
+                                for j in j_range) + base >= CRITICAL_MU,
                 f"cov_{mh}"
             )
         prob += pulp.lpSum(x) == K, "tam_K"

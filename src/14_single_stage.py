@@ -21,8 +21,8 @@ if sys.platform == "win32":
         pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scenario_utils import load_q_vector, fuzzy_coverage_paths
-from config import DATA_DIR as DATA, RESULTS_DIR as RES, logger
+from scenario_utils import load_q_vector, fuzzy_coverage_paths, load_mcdm_column, MCDM_COLUMNS
+from config import DATA_DIR as DATA, RESULTS_DIR as RES, logger, get_mevcut_indices
 from solver_core import dict_to_matrix, add_base_constraints, get_solver
 OUT  = RES / "single_stage"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -31,19 +31,19 @@ ALPHA = 0.20
 L_THRESH = 0.50
 
 
-def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None):
+def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None, MCDM_METHOD="TOPSIS", MCDM_FOCUS="Baseline"):
     if KEPT_MEVCUT is None:
-        KEPT_MEVCUT = list(range(12))
+        KEPT_MEVCUT = get_mevcut_indices()
     if FIXED_ADAY is None:
         FIXED_ADAY = []
 
     logger.info(f"== 14_single_stage.py basladi (senaryo={SCENARIO}, sigma={SIGMA},"
-                f" K_Total={K_TOTAL}, beta={BETA}, weight={WEIGHT_TYPE}) ==")
+                f" K_Total={K_TOTAL}, beta={BETA}, weight={WEIGHT_TYPE}, mcdm={MCDM_METHOD}/{MCDM_FOCUS}) ==")
     fcm = fuzzy_coverage_paths(SIGMA)
     mev_mu = pd.read_excel(fcm["mu_mevcut"])
     aday_mu = pd.read_excel(fcm["mu_aday"])
     aday_data = pd.read_excel(DATA / "adaylar_140.xlsx")
-    
+
     if WEIGHT_TYPE == "risk":
         weight_df = pd.read_excel(DATA / "mahalle_risk.xlsx")
         val_col = "risk_score"
@@ -53,7 +53,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     else:
         weight_df = pd.read_excel(DATA / "mahalle_risk.xlsx")
         val_col = "risk_score"
-    cc = pd.read_excel(RES / "mcdm" / "topsis_cc.xlsx")
+    q_series = load_mcdm_column(MCDM_METHOD, MCDM_FOCUS)
 
     mahalleler = list(mev_mu.columns[1:])
     n = len(aday_mu)
@@ -83,8 +83,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
                     n_zero += 1
         logger.info(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
 
-    Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline_MinMax"])
-         for j in range(len(cc))}
+    Q = {int(sno): float(val) for sno, val in q_series.items()}
     P = {int(row["S_No"]): float(row["p_access_road"])
          for _, row in aday_data.iterrows()}
 
@@ -175,7 +174,8 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     b_str = f"_b{int(BETA*100)}" if abs(BETA - 0.30) > 0.001 else ""
     k_str = f"_K{K_TOTAL}"
     wt_str = f"_{WEIGHT_TYPE}" if WEIGHT_TYPE != "risk" else ""
-    out_path = OUT / f"single_stage_result_S{SCENARIO}{sg_str}{tr_str}{nm_str}{b_str}{k_str}{wt_str}.xlsx"
+    mc_str = f"_{MCDM_METHOD.lower()}_{MCDM_FOCUS.lower()}"
+    out_path = OUT / f"single_stage_result_S{SCENARIO}{sg_str}{tr_str}{nm_str}{b_str}{k_str}{wt_str}{mc_str}.xlsx"
     with pd.ExcelWriter(out_path, engine="openpyxl") as w_:
         out.to_excel(w_, sheet_name="Ozet", index=False)
         mahalle_df.to_excel(w_, sheet_name="Mahalle_Kapsama", index=False)
@@ -192,8 +192,10 @@ if __name__ == "__main__":
     parser.add_argument("--truncate", type=float, default=0.0)
     parser.add_argument("--no-mevcut", action="store_true")
     parser.add_argument("--weight", type=str, default="risk", choices=["risk", "population"])
+    parser.add_argument("--mcdm", type=str, default="TOPSIS", choices=list(MCDM_COLUMNS))
+    parser.add_argument("--mcdm-focus", type=str, default="Baseline", choices=["Baseline", "DamageFocused", "InfrastructureFocused"])
     args = parser.parse_args()
-    
-    kept = [] if args.no_mevcut else list(range(12))
-    k_tot = args.K if args.no_mevcut else args.K + 12
-    main(SCENARIO=args.scenario, SIGMA=args.sigma, K_TOTAL=k_tot, BETA=args.beta, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=kept)
+
+    kept = [] if args.no_mevcut else get_mevcut_indices()
+    k_tot = args.K if args.no_mevcut else args.K + len(get_mevcut_indices())
+    main(SCENARIO=args.scenario, SIGMA=args.sigma, K_TOTAL=k_tot, BETA=args.beta, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=kept, MCDM_METHOD=args.mcdm, MCDM_FOCUS=args.mcdm_focus)

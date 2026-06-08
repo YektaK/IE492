@@ -8,47 +8,50 @@ PROMETHEE benzeri bir Net Uyum Akisi (Net Concordance Flow) cikararak, IP modeli
 kullanilabilecek [0, 1] araliginda skaler bir fayda skoru (q_j) uretir.
 """
 
-from pathlib import Path
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-AHP_DIR = PROJECT_ROOT / "results" / "ahp"
-MCDM_DIR = PROJECT_ROOT / "results" / "mcdm"
+import config
+from config import DATA_DIR as PROCESSED, RESULTS_DIR
+
+AHP_DIR = RESULTS_DIR / "ahp"
+MCDM_DIR = RESULTS_DIR / "mcdm"
 
 KRITER_SUTUNLARI = ["C1_hasar_risk_amp", "C2_lojistik_amp", "C3_bosluk_amp", "C4_barinma_amp"]
 
 def calc_electre_net_flow(mat, w):
     n, m = mat.shape
     C = np.zeros((n, n))
-    
-    # Concordance matrisi (Benefit kriterleri icin i >= k)
+    D = np.zeros((n, n))
+    criteria_range = mat.max(axis=0) - mat.min(axis=0)
+    criteria_range = np.where(criteria_range < 1e-12, 1.0, criteria_range)
+
     for i in range(n):
         for k in range(n):
             if i != k:
-                # i'nin k'ya ustun veya esit oldugu kriterlerin agirliklari toplami
                 c_sum = 0
+                d_max = 0.0
                 for j in range(m):
                     if mat[i, j] >= mat[k, j]:
                         c_sum += w[j]
+                    else:
+                        deficit = (mat[k, j] - mat[i, j]) / criteria_range[j]
+                        d_max = max(d_max, deficit)
                 C[i, k] = c_sum
+                D[i, k] = d_max
 
-    # Net Outranking Flow (Net Uyum Akisi)
-    # i'nin digerlerine ustunluk akisi
     phi_plus = C.sum(axis=1) / (n - 1)
-    # Digerlerinin i'ye ustunluk akisi
     phi_minus = C.sum(axis=0) / (n - 1)
-    
-    # Net Flow
     phi_net = phi_plus - phi_minus
-    
-    # IP modeli icin [0, 1] araligina normalize et
-    p_min = phi_net.min()
-    p_max = phi_net.max()
-    phi_norm = (phi_net - p_min) / (p_max - p_min + 1e-12)
-    
-    return phi_net, phi_norm
+
+    d_penalty = D.max(axis=1)
+    phi_adjusted = phi_net * (1.0 - 0.5 * d_penalty)
+
+    p_min = phi_adjusted.min()
+    p_max = phi_adjusted.max()
+    phi_norm = (phi_adjusted - p_min) / (p_max - p_min + 1e-12)
+
+    return phi_adjusted, phi_norm
 
 def main():
     print("="*60)

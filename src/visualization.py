@@ -19,7 +19,7 @@ from config import norm_mahalle
 plt.style.use("seaborn-v0_8-whitegrid")
 sns.set_context("paper", font_scale=1.2)
 
-def get_color(val):
+def get_color(val: float) -> str:
     """Kapsama seviyesine göre kırmızıdan yeşile renk gradyanı döndürür (0.50 hedef eşik)."""
     # 0.50 ve üzeri tam yeşil, 0.25 sarı, 0.0 tam kırmızı
     v = max(0.0, min(0.5, val)) / 0.5  # 0.0 - 1.0 aralığına normalleştir

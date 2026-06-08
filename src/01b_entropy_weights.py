@@ -31,17 +31,14 @@ Kullanim:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# 0) YOL TANIMLARI
-# ---------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED    = PROJECT_ROOT / "data" / "processed"
-AHP_OUT      = PROJECT_ROOT / "results" / "ahp"
+import config
+from config import DATA_DIR as PROCESSED, RESULTS_DIR
+
+AHP_OUT = RESULTS_DIR / "ahp"
 AHP_OUT.mkdir(parents=True, exist_ok=True)
 
 # Kriter sutunlari (criteria_matrix.xlsx'teki ham degerler)
@@ -79,9 +76,12 @@ def entropy_weights(matrix: np.ndarray) -> np.ndarray:
     P = matrix / col_sum                               # (n, k)
 
     # p_ij=0 icin log(0)=-inf sorunu: 0 * log(0) = 0 (limit)
-    P_safe = np.where(P <= 0, 1.0, P)                 # 0 girisleri 1 → log(1)=0
+    if (P < 0).any():
+        import warnings
+        warnings.warn(f"Entropy inputte negatif deger var! {int((P < 0).sum())} adet -> 0'a clamp.")
+    P_safe = np.where(P == 0, 1.0, P)                 # 0 girisleri 1 → log(1)=0
     log_P  = np.log(P_safe)
-    log_P  = np.where(P <= 0, 0.0, log_P)             # 0*log(0) → 0
+    log_P  = np.where(P == 0, 0.0, log_P)             # 0*log(0) → 0
 
     # Entropy: E_j = -(1/ln n) * Sum_i p_ij * ln(p_ij)
     ln_n = np.log(n) if n > 1 else 1.0

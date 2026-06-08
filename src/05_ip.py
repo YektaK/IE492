@@ -29,63 +29,19 @@ import pulp
 
 # Central Config import
 import config
-from config import norm_mahalle, DATA_DIR as PROCESSED, RESULTS_DIR, MODELS_DIR, logger
+from config import norm_mahalle, DATA_DIR as PROCESSED, RESULTS_DIR, MODELS_DIR, logger, get_mevcut_indices
 
 MCDM_DIR = RESULTS_DIR / "mcdm"
 FUZZY_COV_DIR = RESULTS_DIR / "fuzzy_coverage"
 
-from scenario_utils import load_q_vector, fuzzy_coverage_paths
+from scenario_utils import load_q_vector, fuzzy_coverage_paths, load_mcdm_scores
 from solver_core import build_base_variables_and_coverage, add_base_constraints, get_solver
-
-
-def load_mcdm_scores() -> dict[str, dict[str, np.ndarray]]:
-    """Load all available candidate-quality score vectors used by the MILP."""
-    topsis_cc = pd.read_excel(MCDM_DIR / "topsis_cc.xlsx")
-    promethee_phi = pd.read_excel(MCDM_DIR / "promethee_phi.xlsx")
-
-    topsis_cc["Mahalle_norm"] = topsis_cc["Mahalle"].apply(norm_mahalle)
-    promethee_phi["Mahalle_norm"] = promethee_phi["Mahalle"].apply(norm_mahalle)
-    topsis_cc = topsis_cc.sort_values("S_No").reset_index(drop=True)
-    promethee_phi = promethee_phi.sort_values("S_No").reset_index(drop=True)
-
-    mcdm_scores = {
-        "TOPSIS": {
-            "Baseline": topsis_cc["CC_Baseline_MinMax"].values,
-            "DamageFocused": topsis_cc["CC_DamageFocused_MinMax"].values,
-            "InfrastructureFocused": topsis_cc["CC_InfrastructureFocused_MinMax"].values,
-        },
-        "PROMETHEE": {
-            "Baseline": promethee_phi["phi01_Baseline"].values,
-            "DamageFocused": promethee_phi["phi01_DamageFocused"].values,
-            "InfrastructureFocused": promethee_phi["phi01_InfrastructureFocused"].values,
-        },
-    }
-
-    vikor_path = MCDM_DIR / "vikor_q.xlsx"
-    if vikor_path.exists():
-        vikor_df = pd.read_excel(vikor_path).sort_values("S_No").reset_index(drop=True)
-        mcdm_scores["VIKOR"] = {
-            "Baseline": vikor_df["Q_benefit_Baseline_AHP"].values,
-            "DamageFocused": vikor_df["Q_benefit_DamageFocused_AHP"].values,
-            "InfrastructureFocused": vikor_df["Q_benefit_InfrastructureFocused_AHP"].values,
-        }
-
-    electre_path = MCDM_DIR / "electre_net_flow.xlsx"
-    if electre_path.exists():
-        electre_df = pd.read_excel(electre_path).sort_values("S_No").reset_index(drop=True)
-        mcdm_scores["ELECTRE"] = {
-            "Baseline": electre_df["Q_benefit_Baseline_AHP"].values,
-            "DamageFocused": electre_df["Q_benefit_DamageFocused_AHP"].values,
-            "InfrastructureFocused": electre_df["Q_benefit_InfrastructureFocused_AHP"].values,
-        }
-
-    return mcdm_scores
 
 
 def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", TRUNCATE=0.0, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None):
     """Calistirma fonksiyonu"""
     if KEPT_MEVCUT is None:
-        KEPT_MEVCUT = list(range(12))
+        KEPT_MEVCUT = get_mevcut_indices()
     if FIXED_ADAY is None:
         FIXED_ADAY = []
         
@@ -192,7 +148,8 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
         cov_vals = [Q_i[i] * (mu_mev_sum[i] + sum(MU[j, i] * P_j[j] for j in selected_idx))
                     for i in range(n_mah)]
         Z_risk_val = sum(R_i[i] * cov_vals[i] for i in range(n_mah))
-        Z_quality_val = sum(q_j[j] for j in selected_idx)
+        Z_quality_raw = sum(q_j[j] for j in selected_idx)
+        Z_quality_val = BETA_QUALITY * Z_quality_raw
         RxC = Z_risk_val
         min_cov = min(cov_vals)
         max_cov = max(cov_vals)
@@ -293,7 +250,7 @@ if __name__ == "__main__":
         logger.info("==================================================")
         # Senaryo 1: Toplam K=20, Mevcut 12 Dahil (Yani 8 yeni eklenecek)
         logger.info("\n>>> SENARYO: K_Total=20, Mevcut 12 Dahil (K_Opt=8)")
-        run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=list(range(12)), FIXED_ADAY=[])
+        run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=get_mevcut_indices(), FIXED_ADAY=[])
         
         # Senaryo 2: Toplam K=20, Mevcut Yok (Yani 20'si de yeni secilecek)
         logger.info("\n>>> SENARYO: K_Total=20, Baştan Kurulum (K_Opt=20)")
@@ -304,7 +261,7 @@ if __name__ == "__main__":
         elif args.kept != "":
             kept = [int(x) for x in args.kept.split(",")]
         else:
-            kept = list(range(12))
+            kept = get_mevcut_indices()
             
         fixed = [int(x) for x in args.fixed.split(",")] if args.fixed != "" else []
         

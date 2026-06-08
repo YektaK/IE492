@@ -1,0 +1,36 @@
+{
+    "run_id": "Run_20260608_121454_13eps_K20_Ekleme_risk_b30",
+    "timestamp": "20260608_121454",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "risk",
+        "beta": 0.3,
+        "sigma": "Adaptive",
+        "kept_mevcut": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+        ],
+        "fixed_aday": [],
+        "scenario_tag": "Ekleme",
+        "model": "13_eps",
+        "model_label": "ε-Constraint (Pareto Cephesi)"
+    },
+    "files": {
+        "ip_file": null,
+        "summary_file": null,
+        "result_file": null,
+        "map_file": null,
+        "chart_file": null
+    },
+    "stdout": "2026-06-08 12:14:40,051 [INFO] IE492:main:54 == Pareto Analizi Basliyor (K_Total=20, Sigma=Adaptive, Weight=risk, mcdm=TOPSIS/Baseline) ==\n2026-06-08 12:14:40,427 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:40,523 [INFO] IE492:main:157   eps=0.800 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:40,700 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:40,768 [INFO] IE492:main:157   eps=0.821 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:40,920 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:40,988 [INFO] IE492:main:157   eps=0.842 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:41,369 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:41,466 [INFO] IE492:main:157   eps=0.863 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:42,079 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:42,164 [INFO] IE492:main:157   eps=0.884 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:42,779 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:42,886 [INFO] IE492:main:157   eps=0.905 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:43,448 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:43,539 [INFO] IE492:main:157   eps=0.926 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:44,154 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:44,245 [INFO] IE492:main:157   eps=0.947 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:44,805 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:44,897 [INFO] IE492:main:157   eps=0.968 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:45,529 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:45,618 [INFO] IE492:main:157   eps=0.989 -> Optimal | RxC=31.7460, min_C=0.9952, avg_C=4.1599\n2026-06-08 12:14:46,216 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:46,333 [INFO] IE492:main:157   eps=1.011 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:46,911 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:47,012 [INFO] IE492:main:157   eps=1.032 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:47,648 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:47,753 [INFO] IE492:main:157   eps=1.053 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:48,339 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:48,434 [INFO] IE492:main:157   eps=1.074 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:49,071 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:49,177 [INFO] IE492:main:157   eps=1.095 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:49,781 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:49,893 [INFO] IE492:main:157   eps=1.116 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:50,507 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:50,610 [INFO] IE492:main:157   eps=1.137 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:51,218 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:51,320 [INFO] IE492:main:157   eps=1.158 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:51,913 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:52,031 [INFO] IE492:main:157   eps=1.179 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:52,626 [INFO] IE492:get_solver:20 HiGHS cozucusu bulunamadi, CBC cozucusune geri donuluyor (timeLimit=30s, msg=0).\n2026-06-08 12:14:52,722 [INFO] IE492:main:157   eps=1.200 -> Optimal | RxC=31.5023, min_C=1.2035, avg_C=4.1331\n2026-06-08 12:14:53,718 [INFO] IE492:main:190 \n[+] Pareto grafÄ±gi kaydedildi: C:\\Users\\yektakayman\\Desktop\\AiCode\\IE492\\results\\eps_constraint\\pareto_front_SA_sgAdaptive_b30_K20_risk_topsis_baseline.png\n2026-06-08 12:14:53,719 [INFO] IE492:main:192 [+] Sonuclar Excel'e kaydedildi: C:\\Users\\yektakayman\\Desktop\\AiCode\\IE492\\results\\eps_constraint\\pareto_results_SA_sgAdaptive_b30_K20_risk_topsis_baseline.xlsx\n2026-06-08 12:14:53,719 [INFO] IE492:main:193 == 13_eps_constraint.py tamamlandi ==\n"
+}

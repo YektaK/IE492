@@ -152,8 +152,9 @@ def generate_excel_report(metadata_path: Path, output_excel_path: Path, vname: s
             
     # ExcelWriter ile dosyayı oluştur ve sayfaları yaz
     with pd.ExcelWriter(output_excel_path, engine="openpyxl") as writer:
-        df_params.to_excel(writer, sheet_name="Özet ve Parametreler", index=False)
-        df_metrics.to_excel(writer, sheet_name="Özet ve Parametreler", startrow=len(df_params) + 3, index=False)
+        gap = pd.DataFrame({"": [""], "": [""]})
+        df_summary = pd.concat([df_params, gap, df_metrics], axis=0, ignore_index=True)
+        df_summary.to_excel(writer, sheet_name="Özet ve Parametreler", index=False)
         
         if not df_ip.empty:
             df_ip.to_excel(writer, sheet_name="Seçilen Parseller", index=False)

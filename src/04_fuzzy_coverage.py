@@ -209,8 +209,8 @@ def main():
 
     print(f"\n[+] Kaydediliyor (suffix={SUFFIX})...")
 
-    pd.DataFrame(D_aday, index=adaylar["S_No"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / f"distance_aday{SUFFIX}.xlsx" if use_road else FUZZY_COV_DIR / "distance_aday_140x17.xlsx")
-    pd.DataFrame(D_mevcut, index=mevcut["container_no"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / f"distance_mevcut{SUFFIX}.xlsx" if use_road else FUZZY_COV_DIR / "distance_mevcut_12x17.xlsx")
+    pd.DataFrame(D_aday, index=adaylar["S_No"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / f"distance_aday_140x17{SUFFIX}.xlsx")
+    pd.DataFrame(D_mevcut, index=mevcut["container_no"], columns=ana_mahalleler).to_excel(FUZZY_COV_DIR / f"distance_mevcut_12x17{SUFFIX}.xlsx")
 
     mu_aday_path = FUZZY_COV_DIR / f"mu_aday_140x17{SUFFIX}.xlsx"
     mu_mevcut_path = FUZZY_COV_DIR / f"mu_mevcut_12x17{SUFFIX}.xlsx"

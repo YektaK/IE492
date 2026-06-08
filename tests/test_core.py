@@ -7,7 +7,7 @@ import pandas as pd
 
 # Add src to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from config import norm_mahalle, DATA_DIR, RESULTS_DIR
+from config import norm_mahalle, DATA_DIR, RESULTS_DIR, get_mevcut_indices
 
 def test_norm_mahalle():
     """Türkçe karakter normalizasyonu testleri."""
@@ -164,7 +164,7 @@ def test_app_runner_builds_variant_paths_for_all_mcdm_methods():
         "weight_type": "risk",
         "beta": 0.30,
         "sigma": "Adaptive",
-        "kept_mevcut": list(range(12)),
+        "kept_mevcut": get_mevcut_indices(),
         "fixed_aday": [],
     }
 
@@ -360,7 +360,7 @@ def test_app_runner_builds_commands_by_solver_contract():
         "weight_type": "risk",
         "beta": 0.30,
         "sigma": "Adaptive",
-        "kept_mevcut": list(range(12)),
+        "kept_mevcut": get_mevcut_indices(),
         "fixed_aday": [3, 4],
     }
 
@@ -373,7 +373,7 @@ def test_app_runner_builds_commands_by_solver_contract():
     mclp_cmd = build_solver_command(job, mclp_info, root, python_executable="python")
 
     assert ip_cmd[ip_cmd.index("--K") + 1] == "20"
-    assert ip_cmd[ip_cmd.index("--kept") + 1] == ",".join(map(str, range(12)))
+    assert ip_cmd[ip_cmd.index("--kept") + 1] == ",".join(map(str, get_mevcut_indices()))
     assert ip_cmd[ip_cmd.index("--fixed") + 1] == "3,4"
     assert lex_cmd[lex_cmd.index("--K") + 1] == "8"
     assert "--kept" not in lex_cmd
@@ -403,7 +403,7 @@ def test_app_runner_finds_ip_and_method_outputs(tmp_path):
         "weight_type": "population",
         "beta": 0.30,
         "sigma": "Adaptive",
-        "kept_mevcut": list(range(12)),
+        "kept_mevcut": get_mevcut_indices(),
         "fixed_aday": [],
     }
 
@@ -443,7 +443,7 @@ def test_epsilon_and_compromise_use_same_specific_suffix():
     eps = importlib.import_module("13_eps_constraint")
     comp = importlib.import_module("15_compromise")
 
-    eps_suffix = eps.pareto_suffix("B", "800_300", 20, 0.30, "population", list(range(12)))
+    eps_suffix = eps.pareto_suffix("B", "800_300", 20, 0.30, "population", get_mevcut_indices())
     comp_suffix = comp.pareto_suffix("B", "800_300", 20, 0.30, "population", False)
 
     assert eps_suffix == comp_suffix
@@ -536,48 +536,45 @@ def test_ip_small_instance():
     assert X[0].varValue == 1.0, "Zorunlu aday secilmemis!"
 
 
-def test_excel_report_generation():
+def test_excel_report_generation(tmp_path):
     """Excel raporunun olusturulmasi ve sayfa yapisinin dogrulanmasi."""
     from excel_report_generator import generate_excel_report
-    import tempfile
     import os
-    from config import MODELS_DIR
-    
-    # 1. Mevcut bir metadata dosyası bulalım
-    meta_files = sorted(MODELS_DIR.glob("*_metadata.json"))
-    if not meta_files:
-        pytest.skip("Test icin kayitli metadata dosyasi bulunamadi.")
-        
-    meta_path = meta_files[0]
-    
-    # Gecici bir excel dosyasi tanimla
-    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
-        tmp_path = Path(tmp.name)
-        
+
+    synthetic_meta = {
+        "K": 20, "beta": 0.30, "sigma": "800", "weight_type": "risk",
+        "truncate": 0, "kept_mevcut": get_mevcut_indices(), "fixed_aday": [],
+        "durum": "optimal", "Z_quality": 5.2, "Z_coverage": 28.1,
+        "total_selected": 20, "coverage_count": 15, "runtime_sec": 42.0,
+        "ran_by": "UI", "timestamp": "2026-01-01T00:00:00",
+        "coverage_rates": {"MAH1": 0.8, "MAH2": 0.6},
+        "mahalle_ranking": [["MAH1", 0.43], ["MAH2", 0.31]],
+        "selected_s_no": [101, 102, 103],
+        "selected_is_mevcut": [False, False, True],
+        "selected_coverage": [0.9, 0.85, 0.75],
+        "selected_mahalle": ["MAH1", "MAH1", "MAH2"],
+        "mcdm": {"TOPSIS": {"Baseline": [0.5, 0.6, 0.7]}}
+    }
+    meta_path = tmp_path / "_test_metadata.json"
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(synthetic_meta, f)
+
+    out_path = tmp_path / "test_report.xlsx"
     try:
-        # Ornek bir varyant ile raporu uret
         generate_excel_report(
-            meta_path,
-            tmp_path,
-            vname="v1",
-            mcdm_sel="SA_TOPSIS",
-            scen_sel="Baseline"
+            meta_path, out_path,
+            vname="v1", mcdm_sel="SA_TOPSIS", scen_sel="Baseline"
         )
-        
-        # Dosyanin olusturuldugunu ve bos olmadigini dogrula
-        assert tmp_path.exists()
-        assert tmp_path.stat().st_size > 0
-        
-        # Sayfalari oku ve kontrol et
-        with pd.ExcelFile(tmp_path) as xls:
+        assert out_path.exists()
+        assert out_path.stat().st_size > 0
+        with pd.ExcelFile(out_path) as xls:
             sheets = xls.sheet_names
-        
-        # Sayfalarin varligini dogrula
         assert "Özet ve Parametreler" in sheets
         assert "Seçilen Parseller" in sheets
         assert "Mahalle Kapsama Analizi" in sheets
         assert "Tüm Varyant Karşılaştırması" in sheets
-        
     finally:
-        if tmp_path.exists():
-            os.remove(tmp_path)
+        if meta_path.exists():
+            os.remove(meta_path)
+        if out_path.exists():
+            os.remove(out_path)

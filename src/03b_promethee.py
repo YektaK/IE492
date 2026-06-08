@@ -24,16 +24,22 @@ Yontem (PROMETHEE II, Tip V tercih fonksiyonu = V-shape):
 """
 
 from __future__ import annotations
-from pathlib import Path
 
+import argparse
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-AHP = PROJECT_ROOT / "results" / "ahp"
-MCDM = PROJECT_ROOT / "results" / "mcdm"
+import config
+from config import DATA_DIR as PROCESSED, RESULTS_DIR
+
+AHP = RESULTS_DIR / "ahp"
+MCDM = RESULTS_DIR / "mcdm"
 MCDM.mkdir(parents=True, exist_ok=True)
+
+parser = argparse.ArgumentParser(description="PROMETHEE II puanlamasi")
+parser.add_argument("--q-frac", type=float, default=0.20,
+                    help="V-shape q threshold as fraction of range (default: 0.20 = 20 %%)")
+args = parser.parse_args()
 
 # Faz 1'den gelen amplified (ayriklastirilmis) kriter sutunlari
 KRITER_SUTUNLARI = ["C1_hasar_risk_amp", "C2_lojistik_amp", "C3_bosluk_amp", "C4_barinma_amp"]
@@ -93,7 +99,7 @@ for _, wrow in weights_df.iterrows():
                   wrow["C3_Erisim_hyb"], wrow["C4_Ulasim_hyb"]])
     print(f"\n  --- {senaryo} (Hibrit w = {w.round(4)}) ---")
 
-    phi = promethee_ii(mat, w, q_frac=0.20)
+    phi = promethee_ii(mat, w, q_frac=args.q_frac)
     sonuclar[f"phi_{senaryo}"] = phi
     print(f"  phi: min={phi.min():.4f}, max={phi.max():.4f}, mean={phi.mean():.4f}, std={phi.std():.4f}")
     top5 = np.argsort(phi)[::-1][:5]

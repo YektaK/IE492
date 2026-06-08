@@ -19,22 +19,24 @@ import pandas as pd
 import pulp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from config import norm_mahalle, PROJECT_ROOT, DATA_DIR, MODELS_DIR as RESULTS_DIR, logger
+from config import norm_mahalle, DATA_DIR, MODELS_DIR as RESULTS_DIR, logger, get_mevcut_indices
+from scenario_utils import fuzzy_coverage_paths
 from solver_core import get_solver
 
 def run_mclp(S=800, K_TOTAL=20, weight_type="population", KEPT_MEVCUT=None, FIXED_ADAY=None):
     if KEPT_MEVCUT is None:
-        KEPT_MEVCUT = list(range(12))
+        KEPT_MEVCUT = get_mevcut_indices()
     if FIXED_ADAY is None:
         FIXED_ADAY = []
     logger.info(f"--- MCLP Benchmark Basliyor ---")
     logger.info(f"Parametreler: K_Total={K_TOTAL}, S={S}m, Agirlik={weight_type}, KeptMevcut={len(KEPT_MEVCUT)}, FixedAday={len(FIXED_ADAY)}")
     
     # 1. Veri Okuma
+    fcm = fuzzy_coverage_paths(str(S))
     adaylar = pd.read_excel(DATA_DIR / "adaylar_140.xlsx")
     mevcut = pd.read_excel(DATA_DIR / "mevcut_12.xlsx")
-    dist_aday = pd.read_excel(PROJECT_ROOT / "results" / "fuzzy_coverage" / "distance_aday_140x17.xlsx", index_col=0)
-    dist_mevcut = pd.read_excel(PROJECT_ROOT / "results" / "fuzzy_coverage" / "distance_mevcut_12x17.xlsx", index_col=0)
+    dist_aday = pd.read_excel(fcm["dist_aday"], index_col=0)
+    dist_mevcut = pd.read_excel(fcm["dist_mevcut"], index_col=0)
     
     nufus = pd.read_excel(DATA_DIR / "mahalle_nufus.xlsx")
     barinma = pd.read_excel(DATA_DIR / "mahalle_barinma.xlsx")
@@ -139,6 +141,6 @@ if __name__ == "__main__":
     parser.add_argument("--no-mevcut", action="store_true")
     args = parser.parse_args()
     
-    kept = [] if args.no_mevcut else list(range(12))
-    k_tot = args.K if args.no_mevcut else args.K + 12
+    kept = [] if args.no_mevcut else get_mevcut_indices()
+    k_tot = args.K if args.no_mevcut else args.K + len(get_mevcut_indices())
     run_mclp(S=args.S, K_TOTAL=k_tot, weight_type=args.weight, KEPT_MEVCUT=kept)

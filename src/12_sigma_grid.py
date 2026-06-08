@@ -71,7 +71,7 @@ def main():
     n = len(aday)
 
     R = {row["mahalle"]: float(row["risk_score"]) for _, row in risk.iterrows()}
-    Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline"])
+    Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline_MinMax"])
          for j in range(len(cc))}
     P_acc = {int(aday.iloc[j]["S_No"]): float(aday.iloc[j]["p_access_road"])
              for j in range(n)}

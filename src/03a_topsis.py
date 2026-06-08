@@ -14,15 +14,15 @@ Degisiklikler (Faz 2):
 """
 
 from __future__ import annotations
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROCESSED = PROJECT_ROOT / "data" / "processed"
-AHP = PROJECT_ROOT / "results" / "ahp"
-MCDM = PROJECT_ROOT / "results" / "mcdm"
+import config
+from config import DATA_DIR as PROCESSED, RESULTS_DIR
+
+AHP = RESULTS_DIR / "ahp"
+MCDM = RESULTS_DIR / "mcdm"
 MCDM.mkdir(parents=True, exist_ok=True)
 
 # Faz 1'den gelen amplified (ayriklastirilmis) kriter sutunlari

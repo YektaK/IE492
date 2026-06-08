@@ -12,15 +12,15 @@ Linear BWM Optimizasyon Modeli (SciPy kullanilarak) cozulmustur.
 """
 
 import sys
+import argparse
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from scipy.optimize import minimize
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RES_DIR = PROJECT_ROOT / "results"
-AHP_DIR = RES_DIR / "ahp"
-MCDM_DIR = RES_DIR / "mcdm"
+import config
+from config import RESULTS_DIR
+
+MCDM_DIR = RESULTS_DIR / "mcdm"
 MCDM_DIR.mkdir(parents=True, exist_ok=True)
 
 # Kriterler (AHP ile ayni sira)
@@ -95,9 +95,13 @@ def solve_linear_bwm(BO, OW, best_idx, worst_idx, n_criteria=4):
     if res.success:
         w = res.x[:-1]
         xi = res.x[-1]
-        # Consistency Ratio hesaplamasi: BWM makalelerine gore a_BW'ye bagli max_xi tablosu vardir.
-        # Basitlik acisindan sadece xi'yi gosteriyoruz. xi ne kadar kucukse o kadar tutarli.
-        return w, xi
+        # Consistency ratio (Rezaei 2015, Omega)
+        a_BW = BO[worst_idx]                     # Best-to-Worst preference
+        CI_TABLE = {1: 0.00, 2: 0.44, 3: 1.00, 4: 1.63, 5: 2.30,
+                    6: 3.00, 7: 3.73, 8: 4.47, 9: 5.23}
+        max_xi = CI_TABLE.get(a_BW, 5.23)
+        cr = xi / max_xi if max_xi > 0 else 0.0
+        return w, xi, cr
     else:
         raise ValueError("BWM Optimizasyonu cozum bulamadi: " + res.message)
 
@@ -110,13 +114,13 @@ def main():
     results = []
     
     for scen_name, data in bwm_scenarios.items():
-        w, xi = solve_linear_bwm(data["BO"], data["OW"], data["best"], data["worst"])
+        w, xi, cr = solve_linear_bwm(data["BO"], data["OW"], data["best"], data["worst"])
         print(f"\n[+] Senaryo: {scen_name}")
-        print(f"    Tutarlilik (xi*): {xi:.4f} (0'a ne kadar yakinsa o kadar iyi)")
+        print(f"    Tutarlilik: xi*={xi:.4f}, CR={cr:.4f} (CR < 0.10 kabul edilebilir)")
         for i, c in enumerate(CRITERIA):
             print(f"    - {c:15s}: {w[i]:.4f}")
             
-        res_dict = {"Senaryo": scen_name, "xi_star": xi}
+        res_dict = {"Senaryo": scen_name, "xi_star": xi, "CR": cr}
         for i, c in enumerate(CRITERIA):
             res_dict[c] = w[i]
         results.append(res_dict)

@@ -13,7 +13,7 @@ if sys.platform == "win32":
 
 # Proje kök dizinini ekle
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from config import DATA_DIR, RESULTS_DIR, MODELS_DIR, CHARTS_DIR
+from config import DATA_DIR, RESULTS_DIR, MODELS_DIR, CHARTS_DIR, get_mevcut_indices
 from scenario_utils import load_q_vector, fuzzy_coverage_paths
 
 # 05_ip modülünden çözücü fonksiyonu içe aktar
@@ -44,7 +44,8 @@ def run_beta_sensitivity(K=20, weight_type="risk", sigma="Adaptive", scenario="A
             BETA_QUALITY=b,
             SIGMA_FCM=sigma,
             WEIGHT_TYPE=weight_type,
-            KEPT_MEVCUT=list(range(12)) # Mevcutları koru
+            TRUNCATE=0.15,
+            KEPT_MEVCUT=get_mevcut_indices() # Mevcutları koru
         )
         
         # En son üretilen summary dosyasını oku
@@ -116,7 +117,8 @@ def run_k_sensitivity(beta=0.3, weight_type="risk", sigma="Adaptive", scenario="
             BETA_QUALITY=beta,
             SIGMA_FCM=sigma,
             WEIGHT_TYPE=weight_type,
-            KEPT_MEVCUT=list(range(12)) # Mevcutları koru
+            TRUNCATE=0.15,
+            KEPT_MEVCUT=get_mevcut_indices() # Mevcutları koru
         )
         
         # En son üretilen summary dosyasını oku
@@ -190,7 +192,8 @@ def generate_full_grid(weight_type="risk", sigma="Adaptive", scenario="A"):
                 BETA_QUALITY=b,
                 SIGMA_FCM=sigma,
                 WEIGHT_TYPE=weight_type,
-                KEPT_MEVCUT=list(range(12)) # Mevcutları koru
+                TRUNCATE=0.15,
+                KEPT_MEVCUT=get_mevcut_indices() # Mevcutları koru
             )
             
             sg_str = "" if sigma == "800" else f"_sg{sigma}"

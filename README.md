@@ -8,17 +8,17 @@ Multi-criteria, multi-scenario, multi-method optimization for placing 8 new disa
 
 ## 1. Quick Facts
 
-| Item | Value |
-|---|---|
-| District | Sultanbeyli (Istanbul) — 17 source mahalle records; 15 active modeled mahalle after excluding forest/unpopulated records |
-| Existing containers | 12 (fixed) |
-| Required new containers | 8 (default; configurable via `--K`) |
-| Candidate sites (AYDES public areas) | 140 processed candidate rows |
-| Solution methods | up to 12 MILP variants + LSCP + Lexicographic + Eps-Constraint + Single-Stage + Compromise + Gini + Sigma Grid |
-| Scenarios | A (Referans), B (Yol Kapanmasi) |
-| Coverage sigma | 800 m fixed, `Adaptive`, `RoadNetwork`, and legacy composite `800_300` |
-| Solver | `pulp` CBC, all < 100 ms |
-| Example app point solution | TOPSIS/Baseline, Scenario A, Adaptive sigma, K=20: RxC = 31.7460, min_cov = 0.9952, Z = 32.8802 |
+| Item                                 | Value                                                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| District                             | Sultanbeyli (Istanbul) — 17 source mahalle records; 15 active modeled mahalle after excluding forest/unpopulated records |
+| Existing containers                  | 12 (fixed)                                                                                                               |
+| Required new containers              | 8 (default; configurable via `--K`)                                                                                      |
+| Candidate sites (AYDES public areas) | 140 processed candidate rows                                                                                             |
+| Solution methods                     | up to 12 MILP variants + LSCP + Lexicographic + Eps-Constraint + Single-Stage + Compromise + Gini + Sigma Grid           |
+| Scenarios                            | A (Referans), B (Yol Kapanmasi)                                                                                          |
+| Coverage sigma                       | 800 m fixed, `Adaptive`, `RoadNetwork`, and legacy composite `800_300`                                                   |
+| Solver                               | `pulp` CBC, all < 100 ms                                                                                                 |
+| Example app point solution           | TOPSIS/Baseline, Scenario A, Adaptive sigma, K=20: RxC = 31.7460, min_cov = 0.9952, Z = 32.8802                          |
 
 ---
 
@@ -74,10 +74,13 @@ D:\IE492\
 ```
 
 ### Stage 1 — Data Preparation (`01_data_prep.py`)
+
 Parses raw municipal documents (IBB earthquake report, AYDES registry, population data) into 10 processed xlsx files + scenario definitions.
 
 ### Stage 2 — AHP Weights (`02_ahp_weights.py`)
+
 Pairwise comparison of 4 criteria (C1 Population, C2 Earthquake, C3 Accessibility, C4 Transportation) across 3 scenarios:
+
 - **Baseline**: balanced
 - **DamageFocused**: higher C1 weight
 - **InfrastructureFocused**: higher C2 weight
@@ -85,7 +88,9 @@ Pairwise comparison of 4 criteria (C1 Population, C2 Earthquake, C3 Accessibilit
 All CR < 0.10.
 
 ### Stage 3 — MCDM Scores
+
 Parallel execution:
+
 - `03a_topsis.py` → TOPSIS CC_j scores (3 scenarios × 140 candidates)
 - `03b_promethee.py` → PROMETHEE phi_j scores (3 scenarios × 140 candidates)
 - `03c_vikor.py` → VIKOR Q-benefit scores (3 scenarios × 140 candidates)
@@ -94,6 +99,7 @@ Parallel execution:
 Both with benefit direction for all 4 criteria.
 
 ### Stage 4 — Fuzzy Coverage (`04_fuzzy_coverage.py`)
+
 Gaussian distance-decay membership with configurable sigma. Fixed numeric sigma uses μ(i,j)=exp(-d²/2σ²); adaptive and road-network modes use a 300 m full-service core followed by Gaussian decay.
 
 Two matrices: candidate→mahalle (140×15) and existing→mahalle (12×15).
@@ -101,6 +107,7 @@ Two matrices: candidate→mahalle (140×15) and existing→mahalle (12×15).
 Important interpretation: raw `C_i` coverage is a fuzzy service-intensity score, not a percentage. It may exceed 1.0 when multiple containers provide redundant service to the same mahalle.
 
 ### Stage 5 — 0-1 Integer Programming (`05_ip.py`)
+
 Main MILP solver across up to 12 versions (4 MCDM × 3 AHP scenarios). TOPSIS and PROMETHEE are always loaded; VIKOR and ELECTRE are included when their output files exist:
 
 ```
@@ -110,27 +117,29 @@ s.t. Σ_j X_j = K,  X_j ∈ {0,1}
 ```
 
 ### Stage 6 — Comparison (`06_compare.py`)
+
 Cross-tabulation of all available MCDM/AHP versions, MCDM agreement, scenario sensitivity.
 
 ### Stage 7 — Reporting (`07_reporting.py`)
+
 Consolidated FINAL_REPORT.xlsx with 18 sheets + map.
 
 ---
 
 ## 4. All Solution Methods (11 total)
 
-| # | Method | File | Description |
-|---|--------|------|-------------|
-| 1 | MILP (up to 12 v.) | `05_ip.py` | Main IP — 4 MCDM × 3 AHP when TOPSIS, PROMETHEE, VIKOR, ELECTRE outputs exist |
-| 2 | LSCP | `08_lscp.py` | Location Set Covering — min K for μ ≥ 0.50 |
-| 3 | Gini | `09_gini.py` | Coverage inequality across mahalle |
-| 4 | Infra Score | `10_infra_score.py` | C2 composite replacement |
-| 5 | Lexicographic | `11_lexicographic.py` | A1: max RxC → A2: max min_C |
-| 6 | Sigma Grid | `12_sigma_grid.py` | σ ∈ [400,1200] sensitivity |
-| 7 | Eps-Constraint | `13_eps_constraint.py` | Pareto front (RxC vs min_C) |
-| 8 | Single-Stage | `14_single_stage.py` | Equity-integrated (Z + α·Equity) |
-| 9 | Compromise | `15_compromise.py` | L1/L2/Linf compromise programming |
-| — | **Scenarios** | `experiments_config.json` | 12 experiment configurations |
+| #   | Method             | File                      | Description                                                                   |
+| --- | ------------------ | ------------------------- | ----------------------------------------------------------------------------- |
+| 1   | MILP (up to 12 v.) | `05_ip.py`                | Main IP — 4 MCDM × 3 AHP when TOPSIS, PROMETHEE, VIKOR, ELECTRE outputs exist |
+| 2   | LSCP               | `08_lscp.py`              | Location Set Covering — min K for μ ≥ 0.50                                    |
+| 3   | Gini               | `09_gini.py`              | Coverage inequality across mahalle                                            |
+| 4   | Infra Score        | `10_infra_score.py`       | C2 composite replacement                                                      |
+| 5   | Lexicographic      | `11_lexicographic.py`     | A1: max RxC → A2: max min_C                                                   |
+| 6   | Sigma Grid         | `12_sigma_grid.py`        | σ ∈ [400,1200] sensitivity                                                    |
+| 7   | Eps-Constraint     | `13_eps_constraint.py`    | Pareto front (RxC vs min_C)                                                   |
+| 8   | Single-Stage       | `14_single_stage.py`      | Equity-integrated (Z + α·Equity)                                              |
+| 9   | Compromise         | `15_compromise.py`        | L1/L2/Linf compromise programming                                             |
+| —   | **Scenarios**      | `experiments_config.json` | 12 experiment configurations                                                  |
 
 ---
 
@@ -140,15 +149,15 @@ All experiments are defined in `experiments_config.json`. In this file, `K` mean
 
 ### Available Dimensions
 
-| Parameter | CLI flag | Values | Default |
-|-----------|----------|--------|---------|
-| Scenario | `--scenario` | A (Referans), B (Yol Kapanmasi) | A |
-| Coverage sigma | `--sigma` | 800, Adaptive, RoadNetwork, 800_300 | 800 |
-| Quality weight | `--beta` | 0.0 – 1.0 | 0.30 |
-| New containers in experiment config | `K` | integer | 8 |
-| Total containers in direct `05_ip.py` CLI | `--K` | integer | 20 |
-| Truncation | `--truncate` / `truncate` | 0.0 – 0.50 (mu < threshold → 0) | config default 0; direct `05_ip.py` CLI default 0.15 |
-| No mevcut | `--no-mevcut` | flag | off |
+| Parameter                                 | CLI flag                  | Values                                                      | Default                                              |
+| ----------------------------------------- | ------------------------- | ----------------------------------------------------------- | ---------------------------------------------------- |
+| Scenario                                  | `--scenario`              | A (Referans), B (Yol Kapanmasi) | A                                                    |
+| Coverage sigma                            | `--sigma`                 | 800, Adaptive, RoadNetwork, 800_300                         | 800                                                  |
+| Quality weight                            | `--beta`                  | 0.0 – 1.0                                                   | 0.30                                                 |
+| New containers in experiment config       | `K`                       | integer                                                     | 8                                                    |
+| Total containers in direct `05_ip.py` CLI | `--K`                     | integer                                                     | 20                                                   |
+| Truncation                                | `--truncate` / `truncate` | 0.0 – 0.50 (mu < threshold → 0)                             | config default 0; direct `05_ip.py` CLI default 0.15 |
+| No mevcut                                 | `--no-mevcut`             | flag                                                        | off                                                  |
 
 ### Quick Start
 
@@ -203,91 +212,145 @@ python src/14_single_stage.py --K 20 --no-mevcut
 
 ### Defined Experiments
 
-| Experiment | Scenario | Sigma | Beta | K | Note |
-|------------|----------|-------|------|---|------|
-| Baseline_SA | A | 800 | 0.30 | 8 | Default reference |
-| RoadClosure_SB | B | 800 | 0.30 | 8 | Road closure scenario |
-| TwoTier_SA | A | 800_300 | 0.30 | 8 | Two-tier FCM |
-| TwoTier_SB | B | 800_300 | 0.30 | 8 | Two-tier + road closure |
-| BetaGrid_SA | A | 800 | 0–1.0 | 8 | 7 beta values |
-| FullReloc_SA | A | 800 | 0.30 | 20 | No existing containers |
-| FullReloc_SB | B | 800 | 0.30 | 20 | No existing + road closure |
-| Truncation_SA | A | 800 | 0.30 | 8 | mu < 0.20 → 0 |
+| Experiment     | Scenario | Sigma   | Beta  | K   | Note                       |
+| -------------- | -------- | ------- | ----- | --- | -------------------------- |
+| Baseline_SA    | A        | 800     | 0.30  | 8   | Default reference          |
+| RoadClosure_SB | B        | 800     | 0.30  | 8   | Road closure scenario      |
+| TwoTier_SA     | A        | 800_300 | 0.30  | 8   | Two-tier FCM               |
+| TwoTier_SB     | B        | 800_300 | 0.30  | 8   | Two-tier + road closure    |
+| BetaGrid_SA    | A        | 800     | 0–1.0 | 8   | 7 beta values              |
+| FullReloc_SA   | A        | 800     | 0.30  | 20  | No existing containers     |
+| FullReloc_SB   | B        | 800     | 0.30  | 20  | No existing + road closure |
+| Truncation_SA  | A        | 800     | 0.30  | 8   | mu < 0.20 → 0              |
 
 ---
 
-## 6. Methods Reference (CLI)
+## 6. Interactive Web UI (Streamlit)
+
+A browser-based interface for running solvers, comparing results, and exploring maps:
+
+```powershell
+# Install dependencies first
+pip install streamlit folium
+
+# Launch the app
+streamlit run app.py
+# Opens at http://localhost:8501
+```
+
+### 6.1 Tab Overview
+
+| Tab | Name                    | Purpose                                                                                                                                                          |
+| --- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Deney Tasarımı**      | Select model (IP / Lexicographic / Eps-Constraint / Single-Stage / MCLP), set parameters (K, β, σ, weight type, kept mevcut, fixed aday), and run or queue a job |
+| 2   | **İş Kuyruğu**          | View queued jobs, load standard thesis experiments (6 combos × 2 scenarios), run all, clear queue                                                                |
+| 3   | **Çözüm Detayları**     | Browse completed runs by model/filter, inspect IP solution tables, interactive Folium maps with coverage choropleth, coverage-vs-weight charts                   |
+| 4   | **Çoklu Karşılaştırma** | Side-by-side comparison of 2 runs — map overlay, metric table, bar charts                                                                                        |
+| 5   | **Hassasiyet Analizi**  | Sensitivity charts across β (quality weight) and K (budget) using saved metadata                                                                                 |
+| 6   | **Mahalle Profili**     | Per-neighborhood data: population, risk, shelter need, existing containers                                                                                       |
+
+### 6.2 Running Solvers
+
+- **"Hemen Çalıştır"** runs the selected solver in a background thread — the UI stays responsive with a live elapsed-time counter
+- **"Kuyruğa Ekle"** queues the job; use the Queue tab to run all queued jobs in sequence
+- **"Kuyruğu Çalıştır"** processes all queued jobs in a background thread with live progress bar
+- Results (solution tables, maps, coverage charts) appear automatically in tabs 3-5 after completion
+
+### 6.3 MCDM Method Selection (Equity Models)
+
+`11_lexicographic.py`, `14_single_stage.py`, and `13_eps_constraint.py` now support `--mcdm` and `--mcdm-focus` flags:
+
+```powershell
+python src/11_lexicographic.py --mcdm PROMETHEE --mcdm-focus Baseline
+python src/13_eps_constraint.py --mcdm ELECTRE --mcdm-focus DamageFocused
+python src/14_single_stage.py --mcdm VIKOR --mcdm-focus InfrastructureFocused
+```
+
+Available methods: `TOPSIS`, `PROMETHEE`, `VIKOR`, `ELECTRE`
+Available foci: `Baseline`, `DamageFocused`, `InfrastructureFocused`
+
+---
+
+## 7. Methods Reference (CLI)
 
 ### `05_ip.py` — Main MILP
+
 ```
 python src/05_ip.py [--scenario {A,B}] [--K K] [--beta B] [--sigma S] [--truncate T] [--no-mevcut]
 ```
+
 Outputs: `results/models/{ip,coverage}_v{N}_{MCDM}_{AHP}_S{scenario}[_sg{sigma}][_b{beta}][_K{K}][_t{truncate}][_nomez].xlsx`
 
 ### `08_lscp.py` — Location Set Covering
+
 ```
 python src/08_lscp.py [--scenario {A,B}] [--sigma S] [--K K] [--truncate T] [--no-mevcut]
 ```
 
 ### `11_lexicographic.py` — Two-stage Lexicographic
+
 ```
 python src/11_lexicographic.py [--scenario {A,B}] [--sigma S] [--beta B]
                                [--K K] [--truncate T] [--no-mevcut]
 ```
 
 ### `13_eps_constraint.py` — Epsilon-Constraint
+
 ```
 python src/13_eps_constraint.py [--scenario {A,B}] [--sigma S] [--beta B]
                                 [--K K] [--truncate T] [--no-mevcut]
 ```
 
 ### `14_single_stage.py` — Single-Stage MILP
+
 ```
 python src/14_single_stage.py [--scenario {A,B}] [--sigma S] [--beta B]
                               [--K K] [--truncate T] [--no-mevcut]
 ```
 
 ### `15_compromise.py` — Compromise Programming
+
 ```
 python src/15_compromise.py [--scenario {A,B}] [--sigma S] [--beta B]
                              [--K K] [--weight {risk,population}] [--no-mevcut]
 ```
+
 Consumes the matching scenario-specific `results/eps_constraint/pareto_results_*.xlsx` file produced by `13_eps_constraint.py`.
 
 ---
 
-## 7. Example App Point Solution
+## 8. Example App Point Solution
 
 ### Selected 8 Sites (Scenario A, TOPSIS/Baseline, Adaptive Sigma)
 
-| S_No | Alan_Adi | Mahalle |
-|------|----------|---------|
-| 4 | Ali Kuscu Imam Hatip Ortaokulu Bahcesi | ABDURRAHMANGAZI |
-| 16 | Yunus Emre Ortaokulu Bahcesi / Yunus Emre Imam Hatip Ortaokulu Bahcesi | ADIL |
-| 25 | Sehit Erdem Diker Imam Hatip Ortaokulu Bahcesi | AHMET YESEVI |
-| 55 | Golet Ilkokulu Bahcesi | FATIH |
-| 59 | Esref Bitlis Parki | HAMIDIYE |
-| 60 | Ibrahim Dede Parki | HAMIDIYE |
-| 70 | Ahmet Yesevi Ilkokulu Bahcesi | MECIDIYE |
-| 83 | Mehmet Akif Ersoy Parki | MEHMET AKIF |
+| S_No | Alan_Adi                                                               | Mahalle         |
+| ---- | ---------------------------------------------------------------------- | --------------- |
+| 4    | Ali Kuscu Imam Hatip Ortaokulu Bahcesi                                 | ABDURRAHMANGAZI |
+| 16   | Yunus Emre Ortaokulu Bahcesi / Yunus Emre Imam Hatip Ortaokulu Bahcesi | ADIL            |
+| 25   | Sehit Erdem Diker Imam Hatip Ortaokulu Bahcesi                         | AHMET YESEVI    |
+| 55   | Golet Ilkokulu Bahcesi                                                 | FATIH           |
+| 59   | Esref Bitlis Parki                                                     | HAMIDIYE        |
+| 60   | Ibrahim Dede Parki                                                     | HAMIDIYE        |
+| 70   | Ahmet Yesevi Ilkokulu Bahcesi                                          | MECIDIYE        |
+| 83   | Mehmet Akif Ersoy Parki                                                | MEHMET AKIF     |
 
 ### KPI (12 → 20 containers)
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Total fuzzy service intensity | 37.32 | 62.40 | +67.2% |
-| Mahalle min coverage | 0.473 | 0.995 | +110.3% |
-| Mahalle below 0.50 | 1 | 0 | eliminated |
+| Metric                        | Before | After | Change     |
+| ----------------------------- | ------ | ----- | ---------- |
+| Total fuzzy service intensity | 37.32  | 62.40 | +67.2%     |
+| Mahalle min coverage          | 0.473  | 0.995 | +110.3%    |
+| Mahalle below 0.50            | 1      | 0     | eliminated |
 
 ---
 
-## 8. Dependencies
+## 9. Dependencies
 
 `pandas`, `numpy`, `openpyxl`, `pulp`, `matplotlib`, `scipy`, `python-docx`, `tabulate`
 
 ---
 
-## 9. License & Attribution
+## 10. License & Attribution
 
 Course: IE 492 — Industrial Engineering Senior Project
 Team: Elif Keles, Zumra Sancakli, Doga Yardemir, Semanur Aydin

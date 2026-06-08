@@ -50,11 +50,16 @@ def build_solver_command(
     if fixed and model_info.get("has_fixed"):
         cmd.extend(["--fixed", ",".join(map(str, fixed))])
 
+    if model_info.get("has_mcdm"):
+        mcdm = job.get("mcdm", "TOPSIS")
+        mcdm_focus = job.get("mcdm_focus", "Baseline")
+        cmd.extend(["--mcdm", mcdm, "--mcdm-focus", mcdm_focus])
+
     return cmd
 
 
 def latest_match(directory: Path, pattern: str) -> Path | None:
-    files = sorted(Path(directory).glob(pattern), key=lambda x: x.stat().st_mtime)
+    files = sorted(Path(directory).glob(pattern))
     return files[-1] if files else None
 
 
@@ -98,10 +103,13 @@ def equity_file_suffix(job: dict) -> str:
     nm_str = "_nomez" if not job.get("kept_mevcut") else ""
     weight = job.get("weight_type", "risk")
     wt_str = f"_{weight}" if weight != "risk" else ""
+    mcdm = job.get("mcdm", "TOPSIS").lower()
+    focus = job.get("mcdm_focus", "Baseline").lower()
     return (
         f"S{job.get('scenario', 'A')}{_sigma_suffix(sigma)}"
         f"{_truncate_suffix(truncate)}{nm_str}"
         f"_b{int(beta * 100)}_K{int(job['k_total'])}{wt_str}"
+        f"_{mcdm}_{focus}"
     )
 
 
@@ -109,10 +117,13 @@ def pareto_file_suffix(job: dict) -> str:
     sigma = job.get("sigma", "800")
     beta = float(job.get("beta", 0.30))
     nm_str = "_nomez" if not job.get("kept_mevcut") else ""
+    mcdm = job.get("mcdm", "VIKOR").lower()
+    focus = job.get("mcdm_focus", "Baseline").lower()
     return (
         f"S{job.get('scenario', 'A')}{_sigma_suffix(sigma)}"
         f"_b{int(beta * 100)}_K{int(job['k_total'])}"
         f"{nm_str}_{job.get('weight_type', 'risk')}"
+        f"_{mcdm}_{focus}"
     )
 
 
