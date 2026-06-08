@@ -4,7 +4,7 @@
 LSCP (Location Set Covering Problem) - minimum K ile tum mahalleleri
 kapsayacak konteyner sayisini bul. Referans deger olarak raporlanir.
 
-Girdi : 04_fcm.py ciktilari (mu_aday, mu_mevcut)
+Girdi : 04_fuzzy_coverage.py ciktilari (mu_aday, mu_mevcut)
 Cikti : results/lscp/lscp_result_S{scenario}.xlsx
 """
 
@@ -16,14 +16,12 @@ import pandas as pd
 import numpy as np
 import pulp
 
-if sys.platform == "win32":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+# Central Config & Solver Core import
+from config import logger
+from solver_core import get_solver
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scenario_utils import load_q_vector, fcm_paths
+from scenario_utils import load_q_vector, fuzzy_coverage_paths
 
 ROOT = Path(__file__).resolve().parent.parent
 RES  = ROOT / "results"
@@ -34,7 +32,7 @@ CRITICAL_MU = 0.50
 
 
 def load_mu(sigma: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    paths = fcm_paths(sigma)
+    paths = fuzzy_coverage_paths(sigma)
     mev = pd.read_excel(paths["mu_mevcut"])
     aday = pd.read_excel(paths["mu_aday"])
     return mev, aday
@@ -84,7 +82,7 @@ def solve_lscp(aday_mu: pd.DataFrame, mev_cov: dict[str, float],
             )
         prob += pulp.lpSum(x) == K, "tam_K"
 
-        solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
+        solver = get_solver(time_limit=30, msg=0)
         status = prob.solve(solver)
         st = pulp.LpStatus[status]
         results.append({"K": K, "status": st})
@@ -106,7 +104,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", default="A", choices=["A", "B"])
     parser.add_argument("--sigma", type=str, default="800",
-                        help="FCM sigma (metre), or '800_300' for two-tier")
+                        help="Kapsama sigma modu: 800, Adaptive veya RoadNetwork")
     parser.add_argument("--K", type=int, default=1,
                         help="Minimum kapsanacak mahalle sayisi (varsayilan: 1)")
     parser.add_argument("--truncate", type=float, default=0.0,
@@ -120,13 +118,13 @@ def main():
     TRUNCATE = args.truncate
     NO_MEVCUT = args.no_mevcut
 
-    print(f"== 08_lscp.py basladi (threshold mu >= {CRITICAL_MU}, senaryo={SCENARIO}, sigma={SIGMA}) ==")
+    logger.info(f"== 08_lscp.py basladi (threshold mu >= {CRITICAL_MU}, senaryo={SCENARIO}, sigma={SIGMA}) ==")
     mev_mu, aday_mu = load_mu(SIGMA)
 
     mahalleler = list(mev_mu.columns[1:])
     Q_i_arr = load_q_vector(SCENARIO, mahalleler)
     Q_i_dict = {mh: float(Q_i_arr[i]) for i, mh in enumerate(mahalleler)}
-    print(f"  Q_i ({SCENARIO}): min={Q_i_arr.min():.3f}, max={Q_i_arr.max():.3f}, mean={Q_i_arr.mean():.3f}")
+    logger.info(f"  Q_i ({SCENARIO}): min={Q_i_arr.min():.3f}, max={Q_i_arr.max():.3f}, mean={Q_i_arr.mean():.3f}")
 
     # Truncation: kucuk mu degerlerini sifirla
     if TRUNCATE > 0:
@@ -141,7 +139,7 @@ def main():
                 if float(mev_mu.iloc[j][mh]) < TRUNCATE:
                     mev_mu.at[mev_mu.index[j], mh] = 0.0
                     n_zero += 1
-        print(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
+        logger.info(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
 
     # Mevcut konteynerlerin mahalle bazinda toplam mu'su (Q_i ile carpilmis)
     mev_cov = {}
@@ -152,15 +150,15 @@ def main():
     if NO_MEVCUT:
         for mh in mev_cov:
             mev_cov[mh] = 0.0
-        print(f"  No-mevcut mod: mevcut konteyner katkilari sifirlandi")
+        logger.info(f"  No-mevcut mod: mevcut konteyner katkilari sifirlandi")
 
-    print(f"  Mevcut konteyner Q_i-scaled mu toplami (15 mahalle):")
+    logger.info(f"  Mevcut konteyner Q_i-scaled mu toplami (15 mahalle):")
     for mh, v in mev_cov.items():
-        print(f"    {mh}: {v:.4f}")
+        logger.info(f"    {mh}: {v:.4f}")
 
     tum_mev_yeterli = all(v >= CRITICAL_MU for v in mev_cov.values())
     if tum_mev_yeterli:
-        print(f"\n  TUM mahalleler zaten mevcut konteynerlerle mu>={CRITICAL_MU} - LSCP'ye gerek yok.")
+        logger.info(f"\n  TUM mahalleler zaten mevcut konteynerlerle mu>={CRITICAL_MU} - LSCP'ye gerek yok.")
         out = pd.DataFrame([{
             "K_min": 0, "status": "Mevcut yeterli",
             "scenario_code": SCENARIO,
@@ -169,7 +167,7 @@ def main():
         }])
     else:
         eksik = [mh for mh, v in mev_cov.items() if v < CRITICAL_MU]
-        print(f"\n  Esik altinda kalan mahalleler: {eksik}")
+        logger.info(f"\n  Esik altinda kalan mahalleler: {eksik}")
 
         res = solve_lscp(aday_mu, mev_cov, Q_i_dict=Q_i_dict, K_min=1, K_max=15)
         out_data = [{
@@ -187,8 +185,8 @@ def main():
     nm_str = "_nomez" if NO_MEVCUT else ""
     out_path = OUT / f"lscp_result_S{SCENARIO}{sg_str}{tr_str}{nm_str}.xlsx"
     out.to_excel(out_path, index=False)
-    print(f"\n  -> {out_path}")
-    print("== 08_lscp.py tamamlandi ==")
+    logger.info(f"\n  -> {out_path}")
+    logger.info("== 08_lscp.py tamamlandi == ")
 
 
 if __name__ == "__main__":

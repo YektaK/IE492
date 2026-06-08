@@ -29,13 +29,58 @@ import pulp
 
 # Central Config import
 import config
-from config import norm_mahalle, DATA_DIR as PROCESSED, RESULTS_DIR, MODELS_DIR
+from config import norm_mahalle, DATA_DIR as PROCESSED, RESULTS_DIR, MODELS_DIR, logger
 
 MCDM_DIR = RESULTS_DIR / "mcdm"
 FUZZY_COV_DIR = RESULTS_DIR / "fuzzy_coverage"
 
 from scenario_utils import load_q_vector, fuzzy_coverage_paths
-from solver_core import build_base_variables_and_coverage, add_base_constraints
+from solver_core import build_base_variables_and_coverage, add_base_constraints, get_solver
+
+
+def load_mcdm_scores() -> dict[str, dict[str, np.ndarray]]:
+    """Load all available candidate-quality score vectors used by the MILP."""
+    topsis_cc = pd.read_excel(MCDM_DIR / "topsis_cc.xlsx")
+    promethee_phi = pd.read_excel(MCDM_DIR / "promethee_phi.xlsx")
+
+    topsis_cc["Mahalle_norm"] = topsis_cc["Mahalle"].apply(norm_mahalle)
+    promethee_phi["Mahalle_norm"] = promethee_phi["Mahalle"].apply(norm_mahalle)
+    topsis_cc = topsis_cc.sort_values("S_No").reset_index(drop=True)
+    promethee_phi = promethee_phi.sort_values("S_No").reset_index(drop=True)
+
+    mcdm_scores = {
+        "TOPSIS": {
+            "Baseline": topsis_cc["CC_Baseline_MinMax"].values,
+            "DamageFocused": topsis_cc["CC_DamageFocused_MinMax"].values,
+            "InfrastructureFocused": topsis_cc["CC_InfrastructureFocused_MinMax"].values,
+        },
+        "PROMETHEE": {
+            "Baseline": promethee_phi["phi01_Baseline"].values,
+            "DamageFocused": promethee_phi["phi01_DamageFocused"].values,
+            "InfrastructureFocused": promethee_phi["phi01_InfrastructureFocused"].values,
+        },
+    }
+
+    vikor_path = MCDM_DIR / "vikor_q.xlsx"
+    if vikor_path.exists():
+        vikor_df = pd.read_excel(vikor_path).sort_values("S_No").reset_index(drop=True)
+        mcdm_scores["VIKOR"] = {
+            "Baseline": vikor_df["Q_benefit_Baseline_AHP"].values,
+            "DamageFocused": vikor_df["Q_benefit_DamageFocused_AHP"].values,
+            "InfrastructureFocused": vikor_df["Q_benefit_InfrastructureFocused_AHP"].values,
+        }
+
+    electre_path = MCDM_DIR / "electre_net_flow.xlsx"
+    if electre_path.exists():
+        electre_df = pd.read_excel(electre_path).sort_values("S_No").reset_index(drop=True)
+        mcdm_scores["ELECTRE"] = {
+            "Baseline": electre_df["Q_benefit_Baseline_AHP"].values,
+            "DamageFocused": electre_df["Q_benefit_DamageFocused_AHP"].values,
+            "InfrastructureFocused": electre_df["Q_benefit_InfrastructureFocused_AHP"].values,
+        }
+
+    return mcdm_scores
+
 
 def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", TRUNCATE=0.0, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None):
     """Calistirma fonksiyonu"""
@@ -48,13 +93,11 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
     km_len = len(KEPT_MEVCUT)
     fa_len = len(FIXED_ADAY)
     
-    print(f"== 05_ip.py basladi (senaryo={SCENARIO}, K_Total={K_TOTAL}, beta={BETA_QUALITY}, sigma={SIGMA_FCM}{trunc_s}, weight={WEIGHT_TYPE}, KeptMevcut={km_len}, FixedAday={fa_len}) ==")
+    logger.info(f"== 05_ip.py basladi (senaryo={SCENARIO}, K_Total={K_TOTAL}, beta={BETA_QUALITY}, sigma={SIGMA_FCM}{trunc_s}, weight={WEIGHT_TYPE}, KeptMevcut={km_len}, FixedAday={fa_len}) ==")
 
     # Dizinleri hazirla
     fcm = fuzzy_coverage_paths(SIGMA_FCM)
     
-    topsis_cc = pd.read_excel(MCDM_DIR / "topsis_cc.xlsx")
-    promethee_phi = pd.read_excel(MCDM_DIR / "promethee_phi.xlsx")
     adaylar_sorted = pd.read_excel(PROCESSED / "adaylar_140.xlsx")
     mevcut = pd.read_excel(PROCESSED / "mevcut_12.xlsx")
     mu_aday = pd.read_excel(fcm["mu_aday"], index_col=0)
@@ -73,7 +116,7 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
     else:
         raise ValueError(f"Unknown weight type: {WEIGHT_TYPE}")
 
-    for df in [topsis_cc, promethee_phi, adaylar_sorted, mevcut, weight_df, mu_aday, mu_mevcut]:
+    for df in [adaylar_sorted, mevcut, weight_df, mu_aday, mu_mevcut]:
         for col in df.columns:
             if col.lower() in ["mahalle"] or "mahalle" in col.lower():
                 df[col + "_norm"] = df[col].apply(norm_mahalle)
@@ -100,44 +143,7 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
     if TRUNCATE > 0:
         MU = np.where(MU < TRUNCATE, 0.0, MU)
 
-    topsis_cc["Mahalle_norm"] = topsis_cc["Mahalle"].apply(norm_mahalle)
-    promethee_phi["Mahalle_norm"] = promethee_phi["Mahalle"].apply(norm_mahalle)
-    topsis_cc = topsis_cc.sort_values("S_No").reset_index(drop=True)
-    promethee_phi = promethee_phi.sort_values("S_No").reset_index(drop=True)
-
-    # MinMax kullanilacak
-    mcdm_scores = {
-        "TOPSIS": {
-            "Baseline": topsis_cc["CC_Baseline_MinMax"].values,
-            "DamageFocused": topsis_cc["CC_DamageFocused_MinMax"].values,
-            "InfrastructureFocused": topsis_cc["CC_InfrastructureFocused_MinMax"].values,
-        },
-        "PROMETHEE": {
-            "Baseline": promethee_phi["phi01_Baseline"].values,
-            "DamageFocused": promethee_phi["phi01_DamageFocused"].values,
-            "InfrastructureFocused": promethee_phi["phi01_InfrastructureFocused"].values,
-        },
-    }
-
-    # Eger VIKOR sonuclari varsa ekle
-    vikor_path = MCDM_DIR / "vikor_q.xlsx"
-    if vikor_path.exists():
-        vikor_df = pd.read_excel(vikor_path)
-        mcdm_scores["VIKOR"] = {
-            "Baseline": vikor_df["Q_benefit_Baseline_AHP"].values,
-            "DamageFocused": vikor_df["Q_benefit_DamageFocused_AHP"].values,
-            "InfrastructureFocused": vikor_df["Q_benefit_InfrastructureFocused_AHP"].values,
-        }
-
-    # Eger ELECTRE sonuclari varsa ekle
-    electre_path = MCDM_DIR / "electre_net_flow.xlsx"
-    if electre_path.exists():
-        electre_df = pd.read_excel(electre_path)
-        mcdm_scores["ELECTRE"] = {
-            "Baseline": electre_df["Q_benefit_Baseline_AHP"].values,
-            "DamageFocused": electre_df["Q_benefit_DamageFocused_AHP"].values,
-            "InfrastructureFocused": electre_df["Q_benefit_InfrastructureFocused_AHP"].values,
-        }
+    mcdm_scores = load_mcdm_scores()
 
     scenarios = ["Baseline", "DamageFocused", "InfrastructureFocused"]
     mcdm_methods = list(mcdm_scores.keys())
@@ -179,7 +185,7 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
                              aday_mah_idx, mevcut_counts, R_i, n_mah)
 
         t0 = time.time()
-        prob.solve(pulp.PULP_CBC_CMD(msg=0))
+        prob.solve(get_solver(msg=0))
         dt = time.time() - t0
 
         selected_idx = [j for j in range(n_aday) if X[j].varValue is not None and X[j].varValue > 0.5]
@@ -216,9 +222,8 @@ def run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=0.30, SIGMA_FCM="800", T
         for scen in scenarios:
             q = mcdm_scores[mcdm][scen]
             label = f"{mcdm:10s} / {scen:25s} / S{SCENARIO}"
-            print(f"  -> {label} ... ", end="", flush=True)
             res = solve_ip(mcdm, scen, K_TOTAL, BETA_QUALITY, MU, P_j, R_i_norm, mu_mev_sum, q, n_aday, n_mah, Q_i=Q_i)
-            print(f"Z={res['Z_total']:.3f}, RxC={res['RxC']:.3f}, min_cov={res['min_mahalle_cov']:.3f}")
+            logger.info(f"  -> {label} ... Z={res['Z_total']:.3f}, RxC={res['RxC']:.3f}, min_cov={res['min_mahalle_cov']:.3f}")
 
             idx = len(results_all) + 1
             version = f"v{idx}_S{SCENARIO}"
@@ -283,15 +288,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.batch:
-        print("==================================================")
-        print(f"IP BATCH MODE: K=8 & K=20 (Agirlik: {args.weight})")
-        print("==================================================")
+        logger.info("==================================================")
+        logger.info(f"IP BATCH MODE: K=8 & K=20 (Agirlik: {args.weight})")
+        logger.info("==================================================")
         # Senaryo 1: Toplam K=20, Mevcut 12 Dahil (Yani 8 yeni eklenecek)
-        print("\n>>> SENARYO: K_Total=20, Mevcut 12 Dahil (K_Opt=8)")
+        logger.info("\n>>> SENARYO: K_Total=20, Mevcut 12 Dahil (K_Opt=8)")
         run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=list(range(12)), FIXED_ADAY=[])
         
         # Senaryo 2: Toplam K=20, Mevcut Yok (Yani 20'si de yeni secilecek)
-        print("\n>>> SENARYO: K_Total=20, Baştan Kurulum (K_Opt=20)")
+        logger.info("\n>>> SENARYO: K_Total=20, Baştan Kurulum (K_Opt=20)")
         run_ip_model(SCENARIO="A", K_TOTAL=20, BETA_QUALITY=args.beta, SIGMA_FCM=args.sigma, TRUNCATE=args.truncate, WEIGHT_TYPE=args.weight, KEPT_MEVCUT=[], FIXED_ADAY=[])
     else:
         if args.no_mevcut:

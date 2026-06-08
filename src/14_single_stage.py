@@ -22,8 +22,8 @@ if sys.platform == "win32":
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scenario_utils import load_q_vector, fuzzy_coverage_paths
-from config import DATA_DIR as DATA, RESULTS_DIR as RES
-from solver_core import dict_to_matrix, add_base_constraints
+from config import DATA_DIR as DATA, RESULTS_DIR as RES, logger
+from solver_core import dict_to_matrix, add_base_constraints, get_solver
 OUT  = RES / "single_stage"
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -37,8 +37,8 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     if FIXED_ADAY is None:
         FIXED_ADAY = []
 
-    print(f"== 14_single_stage.py basladi (senaryo={SCENARIO}, sigma={SIGMA},"
-          f" K_Total={K_TOTAL}, beta={BETA}, weight={WEIGHT_TYPE}) ==")
+    logger.info(f"== 14_single_stage.py basladi (senaryo={SCENARIO}, sigma={SIGMA},"
+                f" K_Total={K_TOTAL}, beta={BETA}, weight={WEIGHT_TYPE}) ==")
     fcm = fuzzy_coverage_paths(SIGMA)
     mev_mu = pd.read_excel(fcm["mu_mevcut"])
     aday_mu = pd.read_excel(fcm["mu_aday"])
@@ -60,7 +60,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
 
     Q_i_arr = load_q_vector(SCENARIO, mahalleler)
     Q_i_dict = {mh: float(Q_i_arr[i]) for i, mh in enumerate(mahalleler)}
-    print(f"  Q_i ({SCENARIO}): min={Q_i_arr.min():.3f}, max={Q_i_arr.max():.3f}, mean={Q_i_arr.mean():.3f}")
+    logger.info(f"  Q_i ({SCENARIO}): min={Q_i_arr.min():.3f}, max={Q_i_arr.max():.3f}, mean={Q_i_arr.mean():.3f}")
 
     MU_mev = {mh: sum(float(mev_mu.iloc[idx][mh]) for idx in KEPT_MEVCUT) for mh in mahalleler}
 
@@ -81,7 +81,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
                 if MU[key] < TRUNCATE:
                     MU[key] = 0.0
                     n_zero += 1
-        print(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
+        logger.info(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
 
     Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline_MinMax"])
          for j in range(len(cc))}
@@ -121,13 +121,13 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     for i, mh in enumerate(mahalleler):
         prob += (coverage_without_P[i] >= L_THRESH * w[mh], f"servis_{mh}")
 
-    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
+    solver = get_solver(time_limit=30, msg=0)
     prob.solve(solver)
-    print(f"  Status: {pulp.LpStatus[prob.status]}")
+    logger.info(f"  Status: {pulp.LpStatus[prob.status]}")
 
     secilen = sorted([int(aday_mu.iloc[j]["S_No"]) for j in range(n)
                       if (x[j].value() or 0) > 0.5])
-    print(f"  Secilen 8: {secilen}")
+    logger.info(f"  Secilen: {secilen}")
 
     z_v = pulp.value(prob.objective)
     rxc_v = sum(R[mh] * Q_i_dict[mh] * (MU_mev[mh] + sum(
@@ -136,7 +136,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
         for mh in mahalleler if mh in R)
     q_v = BETA * sum(Q[int(aday_mu.iloc[j]["S_No"])] * (x[j].value() or 0) for j in range(n))
     e_v = ALPHA * sum(int((w[mh].value() or 0) > 0.5) for mh in w)
-    print(f"  Z = {z_v:.4f}  (RxC={rxc_v:.4f}  +  q={q_v:.4f}  +  equity={e_v:.4f})")
+    logger.info(f"  Z = {z_v:.4f}  (RxC={rxc_v:.4f}  +  q={q_v:.4f}  +  equity={e_v:.4f})")
 
     mahalle_rows = []
     for mh in mahalleler:
@@ -153,8 +153,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
             "risk": R[mh]
         })
     mahalle_df = pd.DataFrame(mahalle_rows)
-    print(f"\n  Mahalle kapsama (tek-asamali):")
-    print(mahalle_df.to_string(index=False))
+    logger.info(f"\n  Mahalle kapsama (tek-asamali):\n{mahalle_df.to_string(index=False)}")
 
     out = pd.DataFrame({
         "Yontem": ["Tek-Asamali_MILP_V3"],
@@ -180,8 +179,8 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     with pd.ExcelWriter(out_path, engine="openpyxl") as w_:
         out.to_excel(w_, sheet_name="Ozet", index=False)
         mahalle_df.to_excel(w_, sheet_name="Mahalle_Kapsama", index=False)
-    print(f"\n  -> {out_path}")
-    print("== 14_single_stage.py tamamlandi ==")
+    logger.info(f"\n  -> {out_path}")
+    logger.info("== 14_single_stage.py tamamlandi ==")
 
 
 if __name__ == "__main__":

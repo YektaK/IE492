@@ -13,12 +13,8 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import pulp
-
-if sys.platform == "win32":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+from config import logger
+from solver_core import get_solver
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "processed"
@@ -52,7 +48,7 @@ def compute_mu(coords_a, coords_b, sigma):
 
 
 def main():
-    print("== 12_sigma_grid.py basladi ==")
+    logger.info("== 12_sigma_grid.py basladi ==")
     aday = pd.read_excel(DATA / "adaylar_140.xlsx")
     mev = pd.read_excel(DATA / "mevcut_12.xlsx")
     risk = pd.read_excel(DATA / "mahalle_risk.xlsx")
@@ -107,7 +103,7 @@ def main():
             prob += (pulp.lpSum(mu_aday[j, mi] * x[j] for j in range(n))
                      + mu_mev_sum[mi] >= 0.50, f"cov_{mh}")
 
-        solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
+        solver = get_solver(time_limit=30, msg=0)
         prob.solve(solver)
         status = pulp.LpStatus[prob.status]
         rxc = sum(R[mh] * (mu_mev_sum[mi] + sum(
@@ -123,18 +119,18 @@ def main():
             "n_secilen": len(secilen),
             "secilen": ",".join(map(str, secilen))
         })
-        print(f"  sigma={sigma}m: status={status}, RxC={rxc:.4f}, secilen={secilen}")
+        logger.info(f"  sigma={sigma}m: status={status}, RxC={rxc:.4f}, secilen={secilen}")
 
     out_df = pd.DataFrame(rows)
     out_path = OUT / "sigma_grid_results.xlsx"
     out_df.to_excel(out_path, index=False)
-    print(f"\n  -> {out_path}")
+    logger.info(f"\n  -> {out_path}")
 
     # Sigma duyarliligi ozeti
     rxc_values = out_df["RxC"].values
     rxc_min, rxc_max = rxc_values.min(), rxc_values.max()
-    print(f"\n  RxC aralik: [{rxc_min:.4f}, {rxc_max:.4f}]")
-    print(f"  Duyarlilik: {(rxc_max - rxc_min) / rxc_max * 100:.2f}%")
+    logger.info(f"\n  RxC aralik: [{rxc_min:.4f}, {rxc_max:.4f}]")
+    logger.info(f"  Duyarlilik: {(rxc_max - rxc_min) / rxc_max * 100:.2f}%")
 
     # Site tutarliligi
     sigma_800 = set(secilen_by_sigma[800])
@@ -142,9 +138,9 @@ def main():
         if s == 800:
             continue
         diff = set(secilen_by_sigma[s]) ^ sigma_800
-        print(f"  sigma={s} vs 800: {len(diff)} site farkli -> {diff}")
+        logger.info(f"  sigma={s} vs 800: {len(diff)} site farkli -> {diff}")
 
-    print("== 12_sigma_grid.py tamamlandi ==")
+    logger.info("== 12_sigma_grid.py tamamlandi ==")
 
 
 if __name__ == "__main__":

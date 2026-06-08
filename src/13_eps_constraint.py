@@ -26,13 +26,23 @@ if sys.platform == "win32":
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scenario_utils import load_q_vector, fuzzy_coverage_paths
-from solver_core import build_base_variables_and_coverage, add_base_constraints
+from solver_core import build_base_variables_and_coverage, add_base_constraints, get_solver
 
 # Central Config import
 import config
-from config import norm_mahalle, DATA_DIR as DATA, RESULTS_DIR as RES
+from config import norm_mahalle, DATA_DIR as DATA, RESULTS_DIR as RES, logger
 OUT  = RES / "eps_constraint"
 OUT.mkdir(parents=True, exist_ok=True)
+
+
+def pareto_suffix(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="risk", KEPT_MEVCUT=None):
+    sg_str = "" if SIGMA == "800" else f"_sg{SIGMA}"
+    b_str = f"_b{int(BETA * 100)}"
+    k_str = f"_K{K_TOTAL}"
+    nm_str = "_nomez" if KEPT_MEVCUT is not None and len(KEPT_MEVCUT) == 0 else ""
+    wt_str = f"_{WEIGHT_TYPE}"
+    return f"S{SCENARIO}{sg_str}{b_str}{k_str}{nm_str}{wt_str}"
+
 
 def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None):
     if KEPT_MEVCUT is None:
@@ -40,7 +50,7 @@ def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="ris
     if FIXED_ADAY is None:
         FIXED_ADAY = []
 
-    print(f"== Pareto Analizi Basliyor (K_Total={K_TOTAL}, Sigma={SIGMA}, Weight={WEIGHT_TYPE}) ==")
+    logger.info(f"== Pareto Analizi Basliyor (K_Total={K_TOTAL}, Sigma={SIGMA}, Weight={WEIGHT_TYPE}) ==")
     
     # 1. Veri Okuma
     fcm = fuzzy_coverage_paths(SIGMA)
@@ -122,7 +132,7 @@ def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="ris
             # AUGMECON2 kısıtı: cov_i - surplus_i = eps (cov_i >= eps ile eşdeğerdir)
             prob += coverage[i] - surplus[i] == eps, f"eps_con_{i}"
 
-        solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
+        solver = get_solver(time_limit=30, msg=0)
         prob.solve(solver)
         st = pulp.LpStatus[prob.status]
 
@@ -143,13 +153,14 @@ def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="ris
                 "selected_sites": ",".join(map(str, sorted([int(adaylar.iloc[j]["S_No"]) for j in selected_idx])))
             })
             pareto_points.append((min_c, rxc))
-            print(f"  eps={eps:.3f} -> Optimal | RxC={rxc:.4f}, min_C={min_c:.4f}, avg_C={avg_c:.4f}")
+            logger.info(f"  eps={eps:.3f} -> Optimal | RxC={rxc:.4f}, min_C={min_c:.4f}, avg_C={avg_c:.4f}")
         else:
-            print(f"  eps={eps:.3f} -> {st} (Cozumsuz)")
+            logger.info(f"  eps={eps:.3f} -> {st} (Cozumsuz)")
 
     # Sonuclari Kaydet
     df = pd.DataFrame(rows)
-    out_file = OUT / f"pareto_results_K{K_TOTAL}_{WEIGHT_TYPE}.xlsx"
+    suffix = pareto_suffix(SCENARIO, SIGMA, K_TOTAL, BETA, WEIGHT_TYPE, KEPT_MEVCUT)
+    out_file = OUT / f"pareto_results_{suffix}.xlsx"
     df.to_excel(out_file, index=False)
     
     # Pareto Grafıgini Ciz
@@ -173,12 +184,12 @@ def main(SCENARIO="A", SIGMA="Adaptive", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="ris
         plt.ylabel("Toplam Fayda (RxC) -> Verimlilik Artar")
         plt.grid(True, linestyle='--', alpha=0.7)
         
-        plot_file = OUT / f"pareto_front_K{K_TOTAL}_{WEIGHT_TYPE}.png"
+        plot_file = OUT / f"pareto_front_{suffix}.png"
         plt.savefig(plot_file, dpi=300, bbox_inches='tight')
-        print(f"\n[+] Pareto grafıgi kaydedildi: {plot_file}")
+        logger.info(f"\n[+] Pareto grafıgi kaydedildi: {plot_file}")
         
-    print(f"[+] Sonuclar Excel'e kaydedildi: {out_file}")
-    print("== 13_eps_constraint.py tamamlandi ==")
+    logger.info(f"[+] Sonuclar Excel'e kaydedildi: {out_file}")
+    logger.info("== 13_eps_constraint.py tamamlandi ==")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

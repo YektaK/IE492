@@ -30,4 +30,15 @@ logging.basicConfig(
 logger = logging.getLogger("IE492")
 
 
-# Gerekli dizinl
+# Gerekli dizinlerin var olduğundan emin ol
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+MAPS_DIR.mkdir(parents=True, exist_ok=True)
+CHARTS_DIR.mkdir(parents=True, exist_ok=True)
+
+def norm_mahalle(s: str) -> str:
+    """Tek merkezi Türkçe karakter normalizasyonu."""
+    if not isinstance(s, str):
+        return ""
+    tr = str.maketrans({"Ç":"C","Ğ":"G","İ":"I","Ö":"O","Ş":"S","Ü":"U",
+                        "ç":"C","ğ":"G","ı":"I","ö":"O","ş":"S","ü":"U"})
+    return s.strip().translate(tr).upper()

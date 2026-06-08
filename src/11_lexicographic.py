@@ -28,8 +28,8 @@ from scenario_utils import load_q_vector, fuzzy_coverage_paths
 
 # Central Config import
 import config
-from config import DATA_DIR as DATA, RESULTS_DIR as RES
-from solver_core import dict_to_matrix, add_base_constraints
+from config import DATA_DIR as DATA, RESULTS_DIR as RES, logger
+from solver_core import dict_to_matrix, add_base_constraints, get_solver
 OUT  = RES / "lexicographic"
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -39,8 +39,8 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     if FIXED_ADAY is None:
         FIXED_ADAY = []
 
-    print(f"== 11_lexicographic.py basladi (senaryo={SCENARIO}, sigma={SIGMA},"
-          f" K_Total={K_TOTAL}, beta={BETA}, weight={WEIGHT_TYPE}) ==")
+    logger.info(f"== 11_lexicographic.py basladi (senaryo={SCENARIO}, sigma={SIGMA},"
+                f" K_Total={K_TOTAL}, beta={BETA}, weight={WEIGHT_TYPE}) ==")
     fcm = fuzzy_coverage_paths(SIGMA)
     mev_mu = pd.read_excel(fcm["mu_mevcut"])
     aday_mu = pd.read_excel(fcm["mu_aday"])
@@ -62,7 +62,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     # Q_i: yol erisim senaryo carpani
     Q_i_arr = load_q_vector(SCENARIO, mahalleler)
     Q_i_dict = {mh: float(Q_i_arr[i]) for i, mh in enumerate(mahalleler)}
-    print(f"  Q_i ({SCENARIO}): min={Q_i_arr.min():.3f}, max={Q_i_arr.max():.3f}, mean={Q_i_arr.mean():.3f}")
+    logger.info(f"  Q_i ({SCENARIO}): min={Q_i_arr.min():.3f}, max={Q_i_arr.max():.3f}, mean={Q_i_arr.mean():.3f}")
 
     MU_mev = {mh: sum(float(mev_mu.iloc[idx][mh]) for idx in KEPT_MEVCUT) for mh in mahalleler}
 
@@ -83,7 +83,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
                 if MU[key] < TRUNCATE:
                     MU[key] = 0.0
                     n_zero += 1
-        print(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
+        logger.info(f"  Truncation (mu < {TRUNCATE}): {n_zero} deger sifirlandi")
 
     Q = {int(cc.iloc[j]["S_No"]): float(cc.iloc[j]["CC_Baseline_MinMax"])
          for j in range(len(cc))}
@@ -99,7 +99,7 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     R_arr = np.array([R[mh] for mh in mahalleler])
 
     # --------- ASAMA 1: RxC maksimize ---------
-    print("  Asama 1: RxC maksimize ediliyor...")
+    logger.info("  Asama 1: RxC maksimize ediliyor...")
     prob1 = pulp.LpProblem("Lexi_A1", pulp.LpMaximize)
     x = [pulp.LpVariable(f"x{j}", cat="Binary") for j in range(n)]
     
@@ -124,18 +124,18 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
     for i, mh in enumerate(mahalleler):
         prob1 += coverage_without_P[i] >= 0.50, f"cov_{mh}"
 
-    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
+    solver = get_solver(time_limit=30, msg=0)
     prob1.solve(solver)
-    print(f"  A1 status: {pulp.LpStatus[prob1.status]}")
+    logger.info(f"  A1 status: {pulp.LpStatus[prob1.status]}")
     Z1_opt = pulp.value(prob1.objective)
     Z1_rxc = sum(R_arr[i] * coverage[i].value() for i in range(len(mahalleler)))
-    print(f"  A1 Z_opt = {Z1_opt:.4f}, RxC = {Z1_rxc:.4f}")
+    logger.info(f"  A1 Z_opt = {Z1_opt:.4f}, RxC = {Z1_rxc:.4f}")
 
     secilen1 = sorted([int(aday_mu.iloc[j]["S_No"]) for j in range(n)
                        if (x[j].value() or 0) > 0.5])
 
     # --------- ASAMA 2: Sabit Z ile min C_i maksimize ---------
-    print("  Asama 2: min C_i maksimize ediliyor (Z_opt toleransi ile)...")
+    logger.info("  Asama 2: min C_i maksimize ediliyor (Z_opt toleransi ile)...")
     prob2 = pulp.LpProblem("Lexi_A2", pulp.LpMaximize)
     y = [pulp.LpVariable(f"y{j}", cat="Binary") for j in range(n)]
     
@@ -167,11 +167,11 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
         prob2 += cov2_without_P[i] >= 0.50, f"cov2_{mh}"
 
     prob2.solve(solver)
-    print(f"  A2 status: {pulp.LpStatus[prob2.status]}")
+    logger.info(f"  A2 status: {pulp.LpStatus[prob2.status]}")
     secilen2 = sorted([int(aday_mu.iloc[j]["S_No"]) for j in range(n)
                        if (y[j].value() or 0) > 0.5])
     min_cov2 = pulp.value(t)
-    print(f"  A2 min_C_i = {min_cov2:.4f}")
+    logger.info(f"  A2 min_C_i = {min_cov2:.4f}")
 
     # Mahalle kapsama degerleri
     rows = []
@@ -201,10 +201,10 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
         out.to_excel(w, sheet_name="Ozet", index=False)
         pd.DataFrame(rows).to_excel(w, sheet_name="Mahalle_Karsilastirma", index=False)
 
-    print(f"\n  -> {out_path}")
-    print(f"  A1 secilen: {secilen1}")
-    print(f"  A2 secilen: {secilen2}")
-    print("== 11_lexicographic.py tamamlandi ==")
+    logger.info(f"\n  -> {out_path}")
+    logger.info(f"  A1 secilen: {secilen1}")
+    logger.info(f"  A2 secilen: {secilen2}")
+    logger.info("== 11_lexicographic.py tamamlandi ==")
 
 
 if __name__ == "__main__":

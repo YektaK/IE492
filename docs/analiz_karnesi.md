@@ -2,7 +2,7 @@
 
 **Tarih:** 2026-06-06
 **Kapsam:** IE492 Bitirme Projesi
-**Pipeline:** `01_data_prep` → `02_ahp` → `03a_topsis` || `03b_promethee` → `04_fcm` → `05_ip` → `06_compare` → `07_reporting`
+**Pipeline:** `01_data_prep` → `02_ahp` → `03a_topsis` || `03b_promethee` || `03c_vikor` || `03d_electre` → `04_fuzzy_coverage` → `05_ip` → `06_compare` → `07_reporting`
 
 ---
 
@@ -33,8 +33,8 @@ Problem çözme süreci, birden fazla kriterin eş zamanlı değerlendirilmesini
 ### 0.3 Karar Katmanları
 
 - **AHP** (3 senaryo: Baseline, DamageFocused, InfrastructureFocused) — kriter ağırlıkları
-- **TOPSIS || PROMETHEE II** (paralel) — aday parsel puanları (q_j)
-- **FCM** (Gaussian, σ=800m) — uzaysal üyelik μ_ij
+- **TOPSIS || PROMETHEE II || VIKOR || ELECTRE** (paralel) — aday parsel puanları (q_j)
+- **Gaussian fuzzy coverage** (σ=800m / Adaptive / RoadNetwork) — uzaysal hizmet yoğunluğu μ_ij
 - **0-1 MILP** (β=0.30 kalite ağırlığı) — K=8 konteyner seçimi
 
 ---
@@ -47,12 +47,14 @@ Problem çözme süreci, birden fazla kriterin eş zamanlı değerlendirilmesini
 | 02 | AHP ağırlıkları | `02_ahp_weights.py` | ahp_weights + criteria_def | ✅ TAMAM (CR<0.10) |
 | 03a | TOPSIS | `03a_topsis.py` | topsis_cc.xlsx | ✅ TAMAM |
 | 03b | PROMETHEE II | `03b_promethee.py` | promethee_phi.xlsx | ✅ TAMAM |
-| 04 | FCM μ matrisleri | `04_fcm.py` | mu_aday/mevcut | ✅ TAMAM |
-| 05 | 0-1 IP (6 versiyon) | `05_ip.py` | 6 ip_v* + coverage_v* | ✅ TAMAM |
+| 03c | VIKOR | `03c_vikor.py` | vikor_q.xlsx | ✅ TAMAM |
+| 03d | ELECTRE | `03d_electre.py` | electre_net_flow.xlsx | ✅ TAMAM |
+| 04 | Gaussian fuzzy coverage μ matrisleri | `04_fuzzy_coverage.py` | mu_aday/mevcut | ✅ TAMAM |
+| 05 | 0-1 IP (12 versiyona kadar) | `05_ip.py` | TOPSIS/PROMETHEE/VIKOR/ELECTRE × 3 AHP | ✅ TAMAM |
 | 06 | Karşılaştırma | `06_compare.py` | 4 compare xlsx + rasyonal | ✅ TAMAM |
 | 07 | Raporlama | `07_reporting.py` | FINAL_REPORT + harita | ✅ TAMAM |
 
-**Temel Sonuç:** Kazanan v1 (TOPSIS/Baseline), RxC=21.2022, min_cov=1.0941, 75ms.
+**Temel Sonuç:** Güncel 12 varyantlı app koşusunda (Scenario A, Adaptive sigma, K=20, β=0.30, risk), TOPSIS/Baseline v1 için RxC=31.7460, min_cov=0.9952, Z=32.8802; VIKOR ve ELECTRE varyantları da aynı MILP akışında üretilmektedir.
 
 ---
 
@@ -66,6 +68,8 @@ Problem çözme süreci, birden fazla kriterin eş zamanlı değerlendirilmesini
 | 4 | Lexicographic max-min | ✅ Listede | ✅ TAMAM | 0.5 gün | 11_lexicographic.py — A1+A2 aynı sonuç |
 | 5 | Compromise programming | ➖ Yoktu | ✅ TAMAM | 0.5 gün | 15_compromise.py — L2 en iyi (eps=1.5) |
 | 6 | PROMETHEE II | ✅ Listede | ✅ TAMAM | 0.5 gün | 03b_promethee.py |
+| 6b | VIKOR | ✅ Eklendi | ✅ TAMAM | 0.5 gün | 03c_vikor.py |
+| 6c | ELECTRE | ✅ Eklendi | ✅ TAMAM | 0.5 gün | 03d_electre.py — net outranking flow |
 | 7 | ~~Mevcut karşılaştırma~~ | — | ✅ TAMAM | — | 06_compare.py |
 | 8 | Altyapı skoru (V5) | ➖ Yoktu | ✅ TAMAM | 0.5 gün | 10_infra_score.py — composite oluşturuldu |
 | 9 | Gini eşitsizliği | ➖ Yoktu | ✅ TAMAM | 0.5 gün | 09_gini.py — 0.25-0.29 (dengeli) |
@@ -114,4 +118,3 @@ Tüm versiyonlarda Gini 0.25-0.29 — **adil bir dağılım** mevcut. Tek-aşama
 **Veya tek-aşamalı MILP önerisi:** [3, 4, 5, 55, 60, 83, 87, 88] (tüm 15 mahalleyi garanti eder)
 
 ---
-

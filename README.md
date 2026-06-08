@@ -2,7 +2,7 @@
 
 **IE 492 Industrial Engineering Senior Project** — Sultanbeyli Municipality (Istanbul), Turkey
 
-Multi-criteria, multi-scenario, multi-method optimization for placing 8 new disaster-response containers alongside 12 existing ones, using 141 AYDES-registered public-area candidates.
+Multi-criteria, multi-scenario, multi-method optimization for placing 8 new disaster-response containers alongside 12 existing ones, using 140 processed AYDES-registered public-area candidates.
 
 ---
 
@@ -10,15 +10,15 @@ Multi-criteria, multi-scenario, multi-method optimization for placing 8 new disa
 
 | Item | Value |
 |---|---|
-| District | Sultanbeyli (Istanbul) — 17 mahalle |
+| District | Sultanbeyli (Istanbul) — 17 source mahalle records; 15 active modeled mahalle after excluding forest/unpopulated records |
 | Existing containers | 12 (fixed) |
 | Required new containers | 8 (default; configurable via `--K`) |
-| Candidate sites (AYDES public areas) | 141 |
-| Solution methods | 6 MILP + LSCP + Lexicographic + Eps-Constraint + Single-Stage + Compromise + Gini + Sigma Grid |
+| Candidate sites (AYDES public areas) | 140 processed candidate rows |
+| Solution methods | up to 12 MILP variants + LSCP + Lexicographic + Eps-Constraint + Single-Stage + Compromise + Gini + Sigma Grid |
 | Scenarios | A (Referans), B (Yol Kapanmasi) |
-| FCM sigma | 800 m (default); two-tier 800+300 m also available |
+| Coverage sigma | 800 m fixed, `Adaptive`, `RoadNetwork`, and legacy composite `800_300` |
 | Solver | `pulp` CBC, all < 100 ms |
-| Default point solution | RxC = 21.20, min_cov = 1.09, Z = 22.33 |
+| Example app point solution | TOPSIS/Baseline, Scenario A, Adaptive sigma, K=20: RxC = 31.7460, min_cov = 0.9952, Z = 32.8802 |
 
 ---
 
@@ -32,20 +32,23 @@ D:\IE492\
 │   ├── scenarios/scenarios.xlsx     ← scenario definitions (A, B)
 │   └── processed/                   ← 10 processed xlsx files
 ├── src/
-│   ├── scenario_utils.py            ← shared Q_i loader, FCM path resolver
+│   ├── scenario_utils.py            ← shared Q_i loader, fuzzy coverage path resolver
+│   ├── app_runner.py                ← shared Streamlit command/output resolver
 │   ├── 01_data_prep.py              ← parse raw data → processed xlsx
 │   ├── 02_ahp_weights.py            ← AHP weights (3 scenarios)
 │   ├── 03a_topsis.py                ← TOPSIS scores
 │   ├── 03b_promethee.py             ← PROMETHEE II scores
-│   ├── 04_fcm.py                    ← Gaussian membership (configurable sigma)
-│   ├── 05_ip.py                     ← 0-1 MILP (6 versions), main IP
+│   ├── 03c_vikor.py                 ← VIKOR scores
+│   ├── 03d_electre.py               ← ELECTRE net outranking flow scores
+│   ├── 04_fuzzy_coverage.py         ← Gaussian fuzzy coverage (configurable sigma)
+│   ├── 05_ip.py                     ← 0-1 MILP (up to 12 versions), main IP
 │   ├── 06_compare.py                ← comparison tables
 │   ├── 07_reporting.py              ← final report + map
 │   ├── 08_lscp.py                   ← Location Set Covering Problem
 │   ├── 09_gini.py                   ← Gini inequality analysis
 │   ├── 10_infra_score.py            ← infrastructure composite score
 │   ├── 11_lexicographic.py          ← two-stage lexicographic (RxC → min_C)
-│   ├── 12_sigma_grid.py             ← FCM sigma sensitivity grid
+│   ├── 12_sigma_grid.py             ← coverage sigma sensitivity grid
 │   ├── 13_eps_constraint.py         ← epsilon-constraint Pareto front
 │   ├── 14_single_stage.py           ← equity-integrated single-stage MILP
 │   ├── 15_compromise.py             ← compromise programming (L1/L2/Linf)
@@ -55,7 +58,7 @@ D:\IE492\
 │   ├── sonuclar_ve_yorumlama.md     ← detailed results + interpretation
 │   └── rapor/FINAL_RAPOR.md         ← final report (Turkish)
 ├── results/
-│   ├── ahp/mcdm/fcm/models/         ← pipeline outputs
+│   ├── ahp/mcdm/fuzzy_coverage/models/ ← pipeline outputs
 │   ├── lscp/lexicographic/          ← scenario-aware method outputs
 │   ├── epsilon/single_stage/compromise/
 │   └── gini/sigma_grid/comparison/
@@ -67,7 +70,7 @@ D:\IE492\
 ## 3. Pipeline (7 Stages)
 
 ```
-01_data_prep → 02_ahp → 03a_topsis / 03b_promethee → 04_fcm → 05_ip → 06_compare → 07_reporting
+01_data_prep → 02_ahp → 03a_topsis / 03b_promethee / 03c_vikor / 03d_electre → 04_fuzzy_coverage → 05_ip → 06_compare → 07_reporting
 ```
 
 ### Stage 1 — Data Preparation (`01_data_prep.py`)
@@ -83,18 +86,22 @@ All CR < 0.10.
 
 ### Stage 3 — MCDM Scores
 Parallel execution:
-- `03a_topsis.py` → TOPSIS CC_j scores (3 scenarios × 141 candidates)
-- `03b_promethee.py` → PROMETHEE phi_j scores (3 scenarios × 141 candidates)
+- `03a_topsis.py` → TOPSIS CC_j scores (3 scenarios × 140 candidates)
+- `03b_promethee.py` → PROMETHEE phi_j scores (3 scenarios × 140 candidates)
+- `03c_vikor.py` → VIKOR Q-benefit scores (3 scenarios × 140 candidates)
+- `03d_electre.py` → ELECTRE net outranking flow scores (3 scenarios × 140 candidates)
 
 Both with benefit direction for all 4 criteria.
 
-### Stage 4 — Fuzzy Coverage (`04_fcm.py`)
-Gaussian membership μ(i,j) = exp(-d²/2σ²) with configurable sigma (default 800 m).
+### Stage 4 — Fuzzy Coverage (`04_fuzzy_coverage.py`)
+Gaussian distance-decay membership with configurable sigma. Fixed numeric sigma uses μ(i,j)=exp(-d²/2σ²); adaptive and road-network modes use a 300 m full-service core followed by Gaussian decay.
 
-Two matrices: candidate→mahalle (140×17) and existing→mahalle (12×17).
+Two matrices: candidate→mahalle (140×15) and existing→mahalle (12×15).
+
+Important interpretation: raw `C_i` coverage is a fuzzy service-intensity score, not a percentage. It may exceed 1.0 when multiple containers provide redundant service to the same mahalle.
 
 ### Stage 5 — 0-1 Integer Programming (`05_ip.py`)
-Main MILP solver across 6 versions (TOPSIS/PROMETHEE × 3 AHP scenarios):
+Main MILP solver across up to 12 versions (4 MCDM × 3 AHP scenarios). TOPSIS and PROMETHEE are always loaded; VIKOR and ELECTRE are included when their output files exist:
 
 ```
 max Z = Σ_i R_i · C_i  +  β · Σ_j q_j · X_j
@@ -103,7 +110,7 @@ s.t. Σ_j X_j = K,  X_j ∈ {0,1}
 ```
 
 ### Stage 6 — Comparison (`06_compare.py`)
-Cross-tabulation of all 6 versions, MCDM agreement, scenario sensitivity.
+Cross-tabulation of all available MCDM/AHP versions, MCDM agreement, scenario sensitivity.
 
 ### Stage 7 — Reporting (`07_reporting.py`)
 Consolidated FINAL_REPORT.xlsx with 18 sheets + map.
@@ -114,7 +121,7 @@ Consolidated FINAL_REPORT.xlsx with 18 sheets + map.
 
 | # | Method | File | Description |
 |---|--------|------|-------------|
-| 1 | MILP (6 v.) | `05_ip.py` | Main IP — 6 versions (2 MCDM × 3 AHP) |
+| 1 | MILP (up to 12 v.) | `05_ip.py` | Main IP — 4 MCDM × 3 AHP when TOPSIS, PROMETHEE, VIKOR, ELECTRE outputs exist |
 | 2 | LSCP | `08_lscp.py` | Location Set Covering — min K for μ ≥ 0.50 |
 | 3 | Gini | `09_gini.py` | Coverage inequality across mahalle |
 | 4 | Infra Score | `10_infra_score.py` | C2 composite replacement |
@@ -129,17 +136,18 @@ Consolidated FINAL_REPORT.xlsx with 18 sheets + map.
 
 ## 5. Configuration-Driven Experiments
 
-All experiments are defined in `experiments_config.json`. Each config specifies scenario, sigma, beta, K, truncation, and which methods to run.
+All experiments are defined in `experiments_config.json`. In this file, `K` means the number of **new** containers. The runner translates that value for scripts that expect total containers.
 
 ### Available Dimensions
 
 | Parameter | CLI flag | Values | Default |
 |-----------|----------|--------|---------|
 | Scenario | `--scenario` | A (Referans), B (Yol Kapanmasi) | A |
-| FCM sigma | `--sigma` | 800, 300, 800_300 (two-tier) | 800 |
+| Coverage sigma | `--sigma` | 800, Adaptive, RoadNetwork, 800_300 | 800 |
 | Quality weight | `--beta` | 0.0 – 1.0 | 0.30 |
-| New containers | `--K` | integer | 8 |
-| Truncation | `--truncate` | 0.0 – 0.50 (mu < threshold → 0) | 0 |
+| New containers in experiment config | `K` | integer | 8 |
+| Total containers in direct `05_ip.py` CLI | `--K` | integer | 20 |
+| Truncation | `--truncate` / `truncate` | 0.0 – 0.50 (mu < threshold → 0) | config default 0; direct `05_ip.py` CLI default 0.15 |
 | No mevcut | `--no-mevcut` | flag | off |
 
 ### Quick Start
@@ -150,17 +158,24 @@ python src/01_data_prep.py
 python src/02_ahp_weights.py
 python src/03a_topsis.py
 python src/03b_promethee.py
-python src/04_fcm.py
+python src/04_fuzzy_coverage.py --sigma 800
 python src/05_ip.py
 
 # Run with road-closure scenario
 python src/05_ip.py --scenario B
 
 # Change sigma
-python src/04_fcm.py --sigma 800_300
+python src/04_fuzzy_coverage.py --sigma 800_300
 python src/05_ip.py --sigma 800_300
 
-# All parameters
+# Adaptive coverage mode
+python src/04_fuzzy_coverage.py --sigma Adaptive
+python src/05_ip.py --sigma Adaptive
+
+# Direct main MILP run: --K is total containers for 05_ip.py
+python src/05_ip.py --scenario B --K 20 --beta 0.5 --sigma 800_300 --truncate 0.2
+
+# Full relocation direct run: --K is still total containers
 python src/05_ip.py --scenario B --K 20 --beta 0.5 --sigma 800_300 --truncate 0.2 --no-mevcut
 ```
 
@@ -169,6 +184,9 @@ python src/05_ip.py --scenario B --K 20 --beta 0.5 --sigma 800_300 --truncate 0.
 ```powershell
 # List all defined experiments
 python src/run_all_scenarios.py --list
+
+# Validate commands without running solvers or writing results
+python src/run_all_scenarios.py --name Baseline_SA --dry-run
 
 # Run all experiments
 python src/run_all_scenarios.py
@@ -231,32 +249,34 @@ python src/14_single_stage.py [--scenario {A,B}] [--sigma S] [--beta B]
 
 ### `15_compromise.py` — Compromise Programming
 ```
-python src/15_compromise.py [--scenario {A,B}]
+python src/15_compromise.py [--scenario {A,B}] [--sigma S] [--beta B]
+                             [--K K] [--weight {risk,population}] [--no-mevcut]
 ```
+Consumes the matching scenario-specific `results/eps_constraint/pareto_results_*.xlsx` file produced by `13_eps_constraint.py`.
 
 ---
 
-## 7. Default Point Solution
+## 7. Example App Point Solution
 
-### Selected 8 Sites (Scenario A, Baseline)
+### Selected 8 Sites (Scenario A, TOPSIS/Baseline, Adaptive Sigma)
 
 | S_No | Alan_Adi | Mahalle |
 |------|----------|---------|
 | 4 | Ali Kuscu Imam Hatip Ortaokulu Bahcesi | ABDURRAHMANGAZI |
+| 16 | Yunus Emre Ortaokulu Bahcesi / Yunus Emre Imam Hatip Ortaokulu Bahcesi | ADIL |
+| 25 | Sehit Erdem Diker Imam Hatip Ortaokulu Bahcesi | AHMET YESEVI |
+| 55 | Golet Ilkokulu Bahcesi | FATIH |
 | 59 | Esref Bitlis Parki | HAMIDIYE |
 | 60 | Ibrahim Dede Parki | HAMIDIYE |
-| 61 | Istanbul Ticaret Odasi Sehit Er Dursun Sivaz Ilkokulu Bahcesi | HAMIDIYE |
-| 62 | Mevlana Ortaokulu Bahcesi | HAMIDIYE |
+| 70 | Ahmet Yesevi Ilkokulu Bahcesi | MECIDIYE |
 | 83 | Mehmet Akif Ersoy Parki | MEHMET AKIF |
-| 88 | Yunus Emre Parki | MEHMET AKIF |
-| 141 | Yasar Pasali Ilkokulu Bahcesi | YAVUZ SELIM |
 
 ### KPI (12 → 20 containers)
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| Total FCM μ | 23.17 | 45.54 | +96.6% |
-| Mahalle min coverage | 0.47 | 1.09 | +132% |
+| Total fuzzy service intensity | 37.32 | 62.40 | +67.2% |
+| Mahalle min coverage | 0.473 | 0.995 | +110.3% |
 | Mahalle below 0.50 | 1 | 0 | eliminated |
 
 ---

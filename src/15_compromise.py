@@ -30,27 +30,45 @@ OUT  = ROOT / "results" / "compromise"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
-def main(K_TOTAL=20, WEIGHT_TYPE="risk"):
+def pareto_suffix(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, WEIGHT_TYPE="risk", NO_MEVCUT=False):
+    sg_str = "" if SIGMA == "800" else f"_sg{SIGMA}"
+    b_str = f"_b{int(BETA * 100)}"
+    k_str = f"_K{K_TOTAL}"
+    nm_str = "_nomez" if NO_MEVCUT else ""
+    wt_str = f"_{WEIGHT_TYPE}"
+    return f"S{SCENARIO}{sg_str}{b_str}{k_str}{nm_str}{wt_str}"
+
+
+def main(K_TOTAL=20, WEIGHT_TYPE="risk", argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--K", type=int, default=K_TOTAL)
     parser.add_argument("--weight", type=str, default=WEIGHT_TYPE)
-    args = parser.parse_args()
+    parser.add_argument("--scenario", default="A", choices=["A", "B"])
+    parser.add_argument("--sigma", type=str, default="800")
+    parser.add_argument("--beta", type=float, default=0.30)
+    parser.add_argument("--no-mevcut", action="store_true")
+    args = parser.parse_args(argv)
     
     K = args.K
     WT = args.weight
+    suffix = pareto_suffix(args.scenario, args.sigma, K, args.beta, WT, args.no_mevcut)
     
-    print(f"== 15_compromise.py basladi (K_Total={K}, Weight={WT}) ==")
-    file_path = RES / "eps_constraint" / f"pareto_results_K{K}_{WT}.xlsx"
+    print(f"== 15_compromise.py basladi (K_Total={K}, Weight={WT}, scenario={args.scenario}, sigma={args.sigma}, beta={args.beta}) ==")
+    file_path = RES / "eps_constraint" / f"pareto_results_{suffix}.xlsx"
+    legacy_path = RES / "eps_constraint" / f"pareto_results_K{K}_{WT}.xlsx"
+    if not file_path.exists() and legacy_path.exists():
+        print(f"  Uyari: senaryo-ozel Pareto dosyasi bulunamadi, legacy dosya kullaniliyor: {legacy_path}")
+        file_path = legacy_path
     if not file_path.exists():
         print(f"  Pareto dosyesi bulunamadi: {file_path}")
-        return
+        return 1
         
     df = pd.read_excel(file_path)
     df = df.rename(columns={"eps_target": "eps", "actual_min_cov": "min_cov"})
     df = df.dropna(subset=["RxC", "min_cov"]).reset_index(drop=True)
     if len(df) < 2:
         print("  Yeterli Pareto noktasi yok, eps_constraint calistirilmamis olabilir.")
-        return
+        return 1
 
     # Ideal nokta: her iki amac da maksimize ediliyor
     f_star = {
@@ -100,7 +118,7 @@ def main(K_TOTAL=20, WEIGHT_TYPE="risk"):
         print(f"  {label}: eps={b['eps']:.3f}, RxC={b['RxC']:.4f}, min_cov={b['min_cov']:.4f}, d={b[f'd_{label}']:.4f}")
 
     out_df = pd.DataFrame(rows)
-    out_path = OUT / f"compromise_solution_K{K}_{WT}.xlsx"
+    out_path = OUT / f"compromise_solution_{suffix}.xlsx"
     with pd.ExcelWriter(out_path, engine="openpyxl") as w:
         out_df.to_excel(w, sheet_name="Onerilen", index=False)
         df.to_excel(w, sheet_name="Tum_Pareto_Noktalari", index=False)
@@ -108,13 +126,14 @@ def main(K_TOTAL=20, WEIGHT_TYPE="risk"):
     print(f"\n  -> {out_path}")
 
     # Markdown
-    md = f"# Compromise Programlama Onerisi (K={K}, Weight={WT})\n\n"
+    md = f"# Compromise Programlama Onerisi ({suffix})\n\n"
     md += "Pareto cephesindeki noktalar ideal noktaya gore siralandi.\n\n"
     md += out_df.to_markdown(index=False)
-    with open(OUT / f"compromise_K{K}_{WT}.md", "w", encoding="utf-8") as f:
+    with open(OUT / f"compromise_{suffix}.md", "w", encoding="utf-8") as f:
         f.write(md)
     print("== 15_compromise.py tamamlandi ==")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

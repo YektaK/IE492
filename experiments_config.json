@@ -4,7 +4,7 @@
     "scenario": ["A=Referans", "B=Yol_Kapanmasi"],
     "sigma": ["800=standard", "800_300=two-tier"],
     "beta": "quality weight (0..1)",
-    "K": "number of new containers",
+    "K": "number of new containers; run_all_scenarios translates to total K for scripts that require total containers",
     "truncate": "mu < threshold -> 0 (0=off)",
     "no_mevcut": "ignore existing containers"
   },

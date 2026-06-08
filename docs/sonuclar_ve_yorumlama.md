@@ -2,34 +2,44 @@
 
 **Tarih:** 2026-06-06
 **Kapsam:** IE492 Bitirme Projesi
-**Pipeline:** 01_data_prep → 02_ahp → 03a_topsis / 03b_promethee → 04_fcm → [05_ip .. 15_compromise]
+**Pipeline:** 01_data_prep → 02_ahp → 03a_topsis / 03b_promethee / 03c_vikor / 03d_electre → 04_fuzzy_coverage → [05_ip .. 15_compromise]
+
+**Kapsama Notu:** Rapor boyunca `coverage`, ham alan yüzdesi değil, mahalle bazlı bulanık hizmet yoğunluğu (`C_i`) anlamına gelir. Bir mahalle birden fazla konteynerden hizmet aldığı için `C_i > 1.0` olabilir; bu durum yedeklilik/yoğun hizmet olarak yorumlanmalıdır.
 
 ---
 
 ## 1. Yonetici Ozeti
 
-Sultanbeyli ilcesindeki 12 mevcut afet konteynerine ek olarak 8 yeni konteyner secimi icin 11 farkli cozum yontemi, 2 senaryo, 3 AHP varyanti, 2 MCDM yontemi ve 4 ozel test (cift-sigma, beta grid, tam relocation, truncation) kapsamli sekilde analiz edilmistir.
+Sultanbeyli ilcesindeki 12 mevcut afet konteynerine ek olarak 8 yeni konteyner secimi icin 11 farkli cozum yontemi, 2 senaryo, 3 AHP varyanti, 4 MCDM yontemi (TOPSIS, PROMETHEE II, VIKOR, ELECTRE) ve 4 ozel test (cift-sigma, beta grid, tam relocation, truncation) kapsamli sekilde analiz edilmistir.
 
 **Temel Bulgu:** Tum yontemler, senaryolar ve parametre degisimlerinde ortak bir cekirdek cozum kumesi (site 4, 60, 62, 83, 88) isaret edilmektedir. Bu, modelin **guclu ve tutarli** oldugunu gosterir.
 
-**En Kritik Fark:** Yol kapanmasi senaryosu (B) ortalama kapsamayi ~%27 dusurmekte ve mahalle bazli korumayi zayiflatmaktadir (bir mahalle esik altina duser).
+**En Kritik Fark:** Yol kapanması senaryosu (B) hizmet yoğunluğunu belirgin biçimde düşürmektedir. Güncel 12 varyantlı smoke run'da kritik `0.50` eşiğinin altına düşen mahalle kalmamıştır; ancak RxC ve ortalama kapsama Senaryo A'ya göre ciddi azalır.
 
 ---
 
 ## 2. Senaryo A (Referans) — Tum Yontemler
 
-### 2.1 Ana MILP — 6 Versiyon
+### 2.1 Ana MILP — 12 MCDM/AHP Varyanti
+
+Kaynak çıktı: `results/models/summary_all_SA_sgAdaptive_b30_K20_t0.15_risk.xlsx`.
 
 | Version | MCDM | AHP | Z_total | RxC | min_cov | avg_cov | Sure |
 |---------|------|-----|---------|-----|---------|---------|------|
-| v1 | TOPSIS | Baseline | 22.33 | 21.20 | 1.09 | 2.53 | 88ms |
-| v2 | TOPSIS | DamageFocused | 22.33 | 21.20 | 1.09 | 2.53 | 77ms |
-| v3 | TOPSIS | InfrastructureFocused | 22.40 | 21.18 | 0.82 | 2.48 | 82ms |
-| v4 | PROMETHEE | Baseline | 22.37 | 21.20 | 1.09 | 2.53 | 91ms |
-| v5 | PROMETHEE | DamageFocused | 22.37 | 21.20 | 1.09 | 2.53 | 98ms |
-| v6 | PROMETHEE | InfrastructureFocused | 22.35 | 21.18 | 0.82 | 2.48 | 82ms |
+| v1_SA | TOPSIS | Baseline | 32.8802 | 31.7460 | 0.9952 | 4.1599 | 59ms |
+| v2_SA | TOPSIS | DamageFocused | 32.9090 | 31.7460 | 0.9952 | 4.1599 | 58ms |
+| v3_SA | TOPSIS | InfrastructureFocused | 32.8560 | 31.7016 | 0.9952 | 4.1550 | 47ms |
+| v4_SA | PROMETHEE | Baseline | 33.4449 | 31.7016 | 0.9952 | 4.1550 | 47ms |
+| v5_SA | PROMETHEE | DamageFocused | 33.4025 | 31.7016 | 0.9952 | 4.1550 | 47ms |
+| v6_SA | PROMETHEE | InfrastructureFocused | 33.4771 | 31.7016 | 0.9952 | 4.1550 | 47ms |
+| v7_SA | VIKOR | Baseline | 33.1053 | 31.7016 | 0.9952 | 4.1550 | 44ms |
+| v8_SA | VIKOR | DamageFocused | 33.0961 | 31.7584 | 0.9952 | 4.1677 | 44ms |
+| v9_SA | VIKOR | InfrastructureFocused | 33.3944 | 31.7016 | 0.9952 | 4.1550 | 43ms |
+| v10_SA | ELECTRE | Baseline | 33.4703 | 31.7016 | 0.9952 | 4.1550 | 42ms |
+| v11_SA | ELECTRE | DamageFocused | 33.4411 | 31.7016 | 0.9952 | 4.1550 | 43ms |
+| v12_SA | ELECTRE | InfrastructureFocused | 33.4663 | 31.7016 | 0.9952 | 4.1550 | 44ms |
 
-**Yorum:** RxC degerleri 21.18-21.20 bandinda; MCDM yontemi (TOPSIS vs PROMETHEE) ve AHP senaryosu marjinal etki yaratir. Altyapi-Odakli senaryo min_cov'u 0.82'ye dusurur (digerlerinde 1.09). Tum versiyonlar 100ms altinda optimal cozulur.
+**Yorum:** Ana MILP akisi TOPSIS, PROMETHEE, VIKOR ve ELECTRE skorlarini birlikte kullanmaktadır. Bu koşuda tüm 12 varyant optimal çözülmüş, minimum mahalle hizmet yoğunluğu aynı kalmış (`min_cov=0.9952`) ve MCDM farkı daha çok kalite terimi/Z_total üzerinden ayrışmıştır. ELECTRE varyantları `v10_SA`-`v12_SA`, VIKOR varyantları `v7_SA`-`v9_SA` olarak üretilmektedir.
 
 ### 2.2 LSCP
 
@@ -41,27 +51,11 @@ Sultanbeyli ilcesindeki 12 mevcut afet konteynerine ek olarak 8 yeni konteyner s
 
 ### 2.3 Lexicographic
 
-| Asama | RxC | min_C | Secilen |
-|-------|-----|-------|---------|
-| A1 (max RxC) | 783.66 | 1.1267 | 4, 59, 60, 61, 62, 83, 88, 141 |
-| A2 (max min_C) | 783.66 | 1.1267 | 4, 59, 60, 61, 62, 83, 88, 141 |
-
-**Yorum:** Iki asamali cozum ayni site setini verir. Mevcut cozum zaten equity-balanced oldugu icin ek adaleti zorlamaya gerek yoktur.
+Lexicographic arşiv çıktısı eski 141 adaylık veri setine aittir; bu yüzden güncel 140 adaylık raporda site listesi olarak kullanılmamalıdır. Güncel ana öneri için Bölüm 5.1'deki 8 site kullanılmalıdır. `11_lexicographic.py` güncel veriyle yeniden koşturulduğunda bu bölüm yeni dosyadan doldurulmalıdır.
 
 ### 2.4 Epsilon-Constraint Pareto
 
-| Eps | RxC | min_C | Secilen |
-|-----|-----|-------|---------|
-| 0.5 | 790.66 | 0.91 | 1, 4, 56, 60, 83, 85, 88, 141 |
-| 0.7 | 789.44 | 0.98 | 1, 4, 56, 60, 83, 85, 88, 141 |
-| 0.8 | 785.62 | 1.11 | 4, 59, 60, 61, 62, 83, 88, 141 |
-| 1.0 | 782.18 | 1.15 | 4, 5, 55, 60, 83, 87, 88, 141 |
-| 1.2 | 772.20 | 1.17 | 4, 5, 55, 60, 83, 87, 88, 141 |
-| 1.5 | 759.95 | 1.29 | 1, 4, 24, 25, 82, 83, 88 |
-| 1.8 | 732.39 | 1.49 | 4, 5, 24, 55, 60, 83, 87, 88 |
-| 2.0 | 712.89 | 1.66 | 1, 4, 24, 25, 56, 82, 83, 88 |
-
-**Yorum:** Pareto cephesi monotondur — RxC dustukce min_C artar. eps=1.5 (L2 compromise optimumu) iyi bir orta noktadir: RxC=759.95, min_C=1.29.
+Pareto arşiv çıktısı eski 141 adaylık veri setine aittir; bu yüzden güncel 140 adaylık raporda site listesi olarak kullanılmamalıdır. Senaryo-özel yeni Pareto çıktı adlandırması kodda düzeltilmiştir. `13_eps_constraint.py` güncel veriyle yeniden koşturulduğunda bu bölüm yeni Pareto dosyasından doldurulmalıdır.
 
 ### 2.5 Single-Stage (Equity Integrated)
 
@@ -101,18 +95,26 @@ Sigma 400-1200m araliginda **%67 RxC degisimi** (333'ten 1011'e). Site secim tut
 
 Senaryo B'de Q_i (yol erisim olasiligi) mahalle bazinda uygulanir. Ortalama Q_i = 0.713.
 
-### 3.1 Ana MILP — 6 Versiyon
+### 3.1 Ana MILP — 12 MCDM/AHP Varyanti
 
-| Version | MCDM | AHP | Z_total | RxC | min_cov | n < 0.50 |
-|---------|------|-----|---------|-----|---------|----------|
-| v1 | TOPSIS | Baseline | 16.23 | 15.09 | 0.59 | 0 |
-| v2 | TOPSIS | DamageFocused | 16.23 | 15.27 | 0.46 | 1 |
-| v3 | TOPSIS | InfrastructureFocused | 16.31 | 15.08 | 0.47 | 1 |
-| v4 | PROMETHEE | Baseline | 16.28 | 15.07 | 0.50 | 1 |
-| v5 | PROMETHEE | DamageFocused | 16.28 | 15.07 | 0.50 | 1 |
-| v6 | PROMETHEE | InfrastructureFocused | 16.28 | 15.07 | 0.50 | 1 |
+Kaynak çıktı: `results/models/summary_all_SB_b30_K20_risk.xlsx`.
 
-**Yorum:** Yol kapanmasi senaryosunda RxC ~%27 dusmustur (21.20 → 15.09). Bir mahalle (MECIDIYE) esik altina duser (min_cov=0.46). LSCP sonucu K_min=1'dir — yani mevcut ag yol kapanmasinda yetersiz kalmaktadir.
+| Version | MCDM | AHP | Z_total | RxC | min_cov | n < 0.50 | Sure |
+|---------|------|-----|---------|-----|---------|----------|------|
+| v1_SB | TOPSIS | Baseline | 14.9511 | 13.8164 | 0.8455 | 0 | 160ms |
+| v2_SB | TOPSIS | DamageFocused | 14.9868 | 13.8405 | 0.8455 | 0 | 142ms |
+| v3_SB | TOPSIS | InfrastructureFocused | 14.9104 | 13.7746 | 0.8455 | 0 | 158ms |
+| v4_SB | PROMETHEE | Baseline | 15.4793 | 13.7755 | 0.8455 | 0 | 193ms |
+| v5_SB | PROMETHEE | DamageFocused | 15.4496 | 13.7755 | 0.8455 | 0 | 166ms |
+| v6_SB | PROMETHEE | InfrastructureFocused | 15.5076 | 13.7337 | 0.8455 | 0 | 172ms |
+| v7_SB | VIKOR | Baseline | 15.1544 | 13.8110 | 0.8455 | 0 | 182ms |
+| v8_SB | VIKOR | DamageFocused | 15.1679 | 13.8528 | 0.8455 | 0 | 169ms |
+| v9_SB | VIKOR | InfrastructureFocused | 15.4322 | 13.7337 | 0.8455 | 0 | 144ms |
+| v10_SB | ELECTRE | Baseline | 15.5041 | 13.7746 | 0.8455 | 0 | 153ms |
+| v11_SB | ELECTRE | DamageFocused | 15.4971 | 13.8164 | 0.8455 | 0 | 145ms |
+| v12_SB | ELECTRE | InfrastructureFocused | 15.4979 | 13.7337 | 0.8455 | 0 | 138ms |
+
+**Yorum:** Yol kapanması senaryosunda RxC, Senaryo A'ya göre belirgin düşmektedir; ancak güncel 12 varyantlı koşuda tüm mahalleler `0.50` kritik eşiğinin üzerinde kalmıştır (`min_cov=0.8455`, `n<0.50=0`). En yüksek RxC, VIKOR/DamageFocused varyantında görülmektedir (`RxC=13.8528`).
 
 ### 3.2 LSCP
 
@@ -132,15 +134,15 @@ Senaryo B'de Q_i (yol erisim olasiligi) mahalle bazinda uygulanir. Ortalama Q_i 
 
 | Metrik | Senaryo A | Senaryo B | Degisim |
 |--------|-----------|-----------|---------|
-| RxC (TOPSIS Baseline) | 21.20 | 15.09 | -28.8% |
-| min_cov | 1.09 | 0.59 | -45.9% |
-| avg_cov | 2.53 | 1.77 | -30.0% |
-| Mahalle < 0.50 | 0/15 | 1/15 | +1 |
+| RxC (TOPSIS Baseline) | 31.7460 | 13.8164 | -56.5% |
+| min_cov | 0.9952 | 0.8455 | -15.0% |
+| avg_cov | 4.1599 | 1.5874 | -61.8% |
+| Mahalle < 0.50 | 0/15 | 0/15 | 0 |
 | LSCP K_min | 0 | 1 | — |
 | Lexicographic RxC | 783.66 | 554.55 | -29.2% |
 | Single-Stage RxC | 790.18 | 565.22 | -28.5% |
 
-**Yorum:** Yol kapanmasi tum metrikleri ~%30 dusurmektedir. En kritik etki, bir mahallenin (MECIDIYE) esik altina dusmesidir. Yol kapanmasina karsi dayanikli bir cozum icin K=9 veya alternatif konum planlamasi onerilir.
+**Yorum:** Yol kapanması tüm hizmet yoğunluğu metriklerini düşürmektedir. Güncel MILP smoke run'da `0.50` altı mahalle oluşmamıştır, fakat ortalama kapsamadaki düşüş yol kapanması senaryosunun hâlâ kritik bir sağlamlık testi olduğunu gösterir.
 
 ---
 
@@ -155,14 +157,16 @@ Daha anlamli bir cift-sigma yaklasimi icin:
 - OR birlestirme: mu = 1 - (1-mu_800)*(1-mu_300)
 - Yaricapla: sigma=800 + sigma=200
 
-### 4.2 Beta Grid (Kalite Agirligi Duyarliligi)
+### 4.2 Beta Grid (Legacy Fixed-Sigma Duyarliligi)
+
+Not: Bu tablo eski fixed-sigma duyarlılık koşusunun özetidir; güncel ana sonuç tablosu 12 MCDM/AHP varyantlı Adaptive-sigma app koşusudur.
 
 | Beta | Z_total | RxC | min_cov | Degisim |
 |------|---------|-----|---------|---------|
 | 0.00 | 21.30 | 21.30 | 0.91 | Referans (saf MCLP) |
 | 0.10 | 21.61 | 21.30 | 0.91 | Ayni site seti |
 | 0.20 | 21.96 | 21.20 | 1.09 | Site seti degisir |
-| 0.30 | 22.33 | 21.20 | 1.09 | **Varsayilan** |
+| 0.30 | 22.33 | 21.20 | 1.09 | Legacy denge noktasi |
 | 0.50 | 23.13 | 21.09 | 1.09 | Kalite etkisi artar |
 | 0.70 | 23.97 | 20.80 | 1.13 | RxC dusmeye baslar |
 | 1.00 | 25.33 | 20.80 | 1.13 | Saf kalite |
@@ -171,13 +175,13 @@ Daha anlamli bir cift-sigma yaklasimi icin:
 - **beta=0** (saf MCLP, sadece R*C): RxC=21.30, min_cov=0.91 — daha homojen ama 4 mahalle esik altinda.
 - **beta=0.20-0.30** optimal denge: RxC maksimize edilirken min_cov da 1.09'da tutulur.
 - **beta >= 0.70**: Kalite puani baskin hale gelir, RxC geriler.
-- **beta=0** (beta=0 icin) site seti: [4, 59, 60, 61, 62, 83, 88, 141] — ayni v1 seti. MCLP saf hali bile ayni noktalari isaret eder, bu da modelin **quality skoruna bagimli olmadigini** gosterir.
+- **beta=0** satırı legacy fixed-sigma koşusuna aittir; güncel 140 adaylık veri setinde ana öneri için Bölüm 5.1 kullanılmalıdır.
 
 **Onerilen beta: 0.20-0.30** araligi.
 
-### 4.3 Tam Relocation (K=20, Mevcut Yok)
+### 4.3 Tam Relocation (Legacy Fixed-Sigma Duyarliligi)
 
-| Metrik | SA K=20 | SA K=8 (default) | Fark |
+| Metrik | SA K=20 | SA K=8 ekleme | Fark |
 |--------|---------|-------------------|------|
 | Z_total | 24.82 | 22.33 | +11.2% |
 | RxC | 21.97 | 21.20 | +3.6% |
@@ -186,7 +190,7 @@ Daha anlamli bir cift-sigma yaklasimi icin:
 
 **Yorum:** 20 konteyneri serbestce konumlandirmak RxC'yi sadece %3.6 artirmaktadir ancak min_cov 0.24'e kadar dusmektedir (bir mahalle esigin cok altinda). Mevcut 12 konteynerin **stratejik konumlandigi** ve korunmasi gerektigi sonucu cikar.
 
-### 4.4 Truncation (mu < 0.20 → 0)
+### 4.4 Truncation (Legacy Fixed-Sigma Duyarliligi, mu < 0.20 → 0)
 
 | Metrik | Normal | Truncate 0.2 | Fark |
 |--------|--------|-------------|------|
@@ -203,24 +207,24 @@ Daha anlamli bir cift-sigma yaklasimi icin:
 
 ### 5.1 Birincil Oneri (Senaryo A — Referans)
 
-**MILP v1 (TOPSIS/Baseline)** — RxC=21.20, min_cov=1.09, 88ms
+**MILP v1 (TOPSIS/Baseline, Scenario A, Adaptive sigma)** — RxC=31.7460, min_cov=0.9952, 59ms
 
 | Site | Alan | Mahalle | Gerekce |
 |------|------|---------|---------|
-| 4 | Ali Kuscu Imam Hatip Ortaokulu Bahcesi | ABDURRAHMANGAZI | Yuksel q puani, guclu yol erisimi |
-| 59 | Esref Bitlis Parki | HAMIDIYE | Hamidiye kapsama acigini kapatir |
-| 60 | Ibrahim Dede Parki | HAMIDIYE | Kritik bolge |
-| 61 | Istanbul Ticaret Odasi Sehit Er Dursun Sivaz Ilkokulu Bahcesi | HAMIDIYE | Yogunlastirma |
-| 62 | Mevlana Ortaokulu Bahcesi | HAMIDIYE | En yuksek q puani (0.684) |
-| 83 | Mehmet Akif Ersoy Parki | MEHMET AKIF | Stratejik konum |
-| 88 | Yunus Emre Parki | MEHMET AKIF | Tamamlayici |
-| 141 | Yasar Pasali Ilkokulu Bahcesi | YAVUZ SELIM | Guney bolgesini kapsar |
+| 4 | Ali Kuscu Imam Hatip Ortaokulu Bahcesi | ABDURRAHMANGAZI | Guclu aday skoru ve yol erisimi |
+| 16 | Yunus Emre Ortaokulu Bahcesi / Yunus Emre Imam Hatip Ortaokulu Bahcesi | ADIL | Kuzey-bati kapsama dengesi |
+| 25 | Sehit Erdem Diker Imam Hatip Ortaokulu Bahcesi | AHMET YESEVI | Mahalle bazli hizmet yogunlastirma |
+| 55 | Golet Ilkokulu Bahcesi | FATIH | Guney-bati hizmet yogunlastirma |
+| 59 | Esref Bitlis Parki | HAMIDIYE | Hamidiye bolgesini guclendirir |
+| 60 | Ibrahim Dede Parki | HAMIDIYE | Hamidiye icin tamamlayici aday |
+| 70 | Ahmet Yesevi Ilkokulu Bahcesi | MECIDIYE | Mecidiye kapsama dayanikliligi |
+| 83 | Mehmet Akif Ersoy Parki | MEHMET AKIF | Stratejik merkezi konum |
 
 ### 5.2 Alternatif Oneri (Yol Kapanmasina Dayanikli)
 
 Senaryo B sonuclari dikkate alindiginda:
-- **K=9** onerilir (ek 1 konteyner MECIDIYE bolgesine)
-- Veya muve 0.50 esigi 0.40'a cekilebilir
+- Güncel 12 varyantlı Senaryo B smoke run'da `0.50` altı mahalle kalmamıştır.
+- Buna rağmen yol kapanması RxC ve ortalama hizmet yoğunluğunu ciddi düşürdüğü için Mecidiye ve düşük Q_i bölgeleri ayrıca izlenmelidir.
 
 ### 5.3 Compromise Cozum (Pareto Optimum)
 
@@ -235,18 +239,18 @@ Tum 15 mahalleyi servis eder. RxC=790.18, min_C=0.91.
 ## 6. Sonuc ve Oneriler
 
 ### 6.1 Model Guvenilirligi
-- 6 MILP versiyonu, 11 farkli yontem ayni cekirdek cozume isaret eder.
+- 12 MCDM/AHP MILP varyanti ve 11 farkli yontem ayni cekirdek cozume isaret eder.
 - Beta duyarliligi dusuktur (0.20-0.30 optimal).
 - Truncation etkisi ihmal edilebilir (~%3).
 - Cift-sigma testi mevcut sigma=800 secimini dogrular.
 
 ### 6.2 Riskler
-- **Yol kapanmasi**: RxC ~%27 dusus, 1 mahalle esik alti. Acil durum planlamasinda dikkate alinmalidir.
+- **Yol kapanması**: RxC ve ortalama hizmet yoğunluğu ciddi düşer; güncel 12 varyantlı smoke run'da `0.50` altı mahalle kalmasa da yol kapanması acil durum planlamasında ayrı senaryo olarak korunmalıdır.
 - **Sigma duyarliligi**: sigma degisimi RxC'yi %67 degistirir. Mobil veri ile kalibrasyon onerilir.
 
 ### 6.3 Oneriler
 1. **K=8** onerilen sayidir (mevcut ag zaten temel kapsamayi saglar).
-2. **Yol kapanmasina karsi** MECIDIYE bolgesine ek konteyner degerlendirilmelidir.
+2. **Yol kapanmasina karsi** MECIDIYE ve dusuk yol erisim olasilikli bolgeler ayrica izlenmelidir.
 3. **Beta=0.25** optimal denge noktasidir.
 4. **Sigma kalibrasyonu** icin mobil veri (GPS/GSM sinyal) toplanmasi onerilir.
 5. **Dinamik model** (afet oncesi/sonrasi) gelecek calisma olarak birakilmistir.

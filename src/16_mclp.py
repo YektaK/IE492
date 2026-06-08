@@ -19,15 +19,16 @@ import pandas as pd
 import pulp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from config import norm_mahalle, PROJECT_ROOT, DATA_DIR, MODELS_DIR as RESULTS_DIR
+from config import norm_mahalle, PROJECT_ROOT, DATA_DIR, MODELS_DIR as RESULTS_DIR, logger
+from solver_core import get_solver
 
 def run_mclp(S=800, K_TOTAL=20, weight_type="population", KEPT_MEVCUT=None, FIXED_ADAY=None):
     if KEPT_MEVCUT is None:
         KEPT_MEVCUT = list(range(12))
     if FIXED_ADAY is None:
         FIXED_ADAY = []
-    print(f"--- MCLP Benchmark Basliyor ---")
-    print(f"Parametreler: K_Total={K_TOTAL}, S={S}m, Agirlik={weight_type}, KeptMevcut={len(KEPT_MEVCUT)}, FixedAday={len(FIXED_ADAY)}")
+    logger.info(f"--- MCLP Benchmark Basliyor ---")
+    logger.info(f"Parametreler: K_Total={K_TOTAL}, S={S}m, Agirlik={weight_type}, KeptMevcut={len(KEPT_MEVCUT)}, FixedAday={len(FIXED_ADAY)}")
     
     # 1. Veri Okuma
     adaylar = pd.read_excel(DATA_DIR / "adaylar_140.xlsx")
@@ -98,7 +99,7 @@ def run_mclp(S=800, K_TOTAL=20, weight_type="population", KEPT_MEVCUT=None, FIXE
         
     # Cozum
     t0 = time.time()
-    prob.solve(pulp.PULP_CBC_CMD(msg=0))
+    prob.solve(get_solver(msg=0))
     dt = time.time() - t0
     
     status = pulp.LpStatus[prob.status]
@@ -110,10 +111,10 @@ def run_mclp(S=800, K_TOTAL=20, weight_type="population", KEPT_MEVCUT=None, FIXE
     toplam_talep = W.sum()
     kapsanan_oran = obj_val / toplam_talep if toplam_talep > 0 else 0
     
-    print(f"Cozum Durumu: {status} ({dt:.2f} sn)")
-    print(f"Maksimum Kapsanan {weight_type.capitalize()}: {obj_val:,.0f} / {toplam_talep:,.0f} (%{kapsanan_oran*100:.1f})")
-    print(f"Kapsanan Mahalle Sayisi: {len(covered_idx)} / {n_mah}")
-    print(f"Secilen Aday ID'leri: {[int(adaylar.iloc[j]['S_No']) for j in selected_idx]}")
+    logger.info(f"Cozum Durumu: {status} ({dt:.2f} sn)")
+    logger.info(f"Maksimum Kapsanan {weight_type.capitalize()}: {obj_val:,.0f} / {toplam_talep:,.0f} (%{kapsanan_oran*100:.1f})")
+    logger.info(f"Kapsanan Mahalle Sayisi: {len(covered_idx)} / {n_mah}")
+    logger.info(f"Secilen Aday ID'leri: {[int(adaylar.iloc[j]['S_No']) for j in selected_idx]}")
     
     # 4. Sonuclari Kaydet
     vname = f"MCLP_K{K_TOTAL}_S{S}_{weight_type}"
@@ -128,7 +129,7 @@ def run_mclp(S=800, K_TOTAL=20, weight_type="population", KEPT_MEVCUT=None, FIXE
         "Kapsandi_mi": [1 if i in covered_idx else 0 for i in range(n_mah)]
     })
     mahalle_sonuclar.to_excel(RESULTS_DIR / f"{vname}_mahalleler.xlsx", index=False)
-    print(f"Sonuclar '{vname}' önekiyle kaydedildi.\n")
+    logger.info(f"Sonuclar '{vname}' önekiyle kaydedildi.\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

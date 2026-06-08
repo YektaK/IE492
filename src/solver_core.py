@@ -50,4 +50,19 @@ def add_base_constraints(prob, X, coverage, K_TOTAL, KEPT_MEVCUT, FIXED_ADAY,
     Tüm modeller için geçerli olan temel kısıtları (Bütçe, Zorunlu Adaylar, En Az 1 Konteyner ve Risk Orantılı Kapsama) modele ekler.
     """
     # 1. Bütçe Kısıtı
-    prob += pulp
+    prob += pulp.lpSum(X) == (K_TOTAL - len(KEPT_MEVCUT))
+    
+    # 2. Zorunlu Seçilen Adaylar
+    for f_idx in FIXED_ADAY:
+        prob += X[f_idx] == 1
+        
+    # 3. Mahalle Kısıtları
+    for i in range(n_mah):
+        # 3a. En Az 1 Konteyner Kısıtı
+        if min_one:
+            adaylar_i = [j for j, idx in enumerate(aday_mah_idx) if idx == i]
+            prob += pulp.lpSum(X[j] for j in adaylar_i) + mevcut_counts[i] >= 1
+            
+        # 3b. Esnek Riske Orantılı Kapsama Kısıtı (Risk_norm_i'nin %50'si kadar)
+        if risk_prop:
+            prob += coverage[i] >= 0.50 * R_i[i]

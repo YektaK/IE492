@@ -49,6 +49,7 @@ button[data-baseweb="tab"] {
 
 # Veri Yolları ve Konfigürasyon
 from config import DATA_DIR, RESULTS_DIR, MODELS_DIR, MAPS_DIR, CHARTS_DIR, JOBS_FILE, norm_mahalle
+from app_runner import build_solver_command, find_solver_outputs, pareto_file_suffix, project_relative, variant_output_paths
 
 # ==========================================
 # VERİ YÜKLEMELERİ
@@ -80,64 +81,38 @@ def save_jobs(jobs):
 def weight_label(w):
     return {"risk": "Deprem Riski (İBB)", "population": "Gece Nüfusu", "shelter": "Barınma İhtiyacı"}.get(w, w)
 
+def get_sigma_radius(val):
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return 800
+
 MODEL_OPTIONS = {
-    "05_ip": {"label": "Ana IP Modeli (12 MCDM Varyantı)", "script": "05_ip.py", "has_kept": True, "has_fixed": True, "has_beta": True, "has_sigma": True, "k_is_total": True},
-    "11_lex": {"label": "Lexicographic Max-Min (Adalet Odaklı)", "script": "11_lexicographic.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False},
-    "13_eps": {"label": "ε-Constraint (Pareto Cephesi)", "script": "13_eps_constraint.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False},
-    "14_single": {"label": "Single-Stage MILP (Entegre Equity)", "script": "14_single_stage.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False},
-    "16_mclp": {"label": "MCLP Benchmark (Klasik Kapsama)", "script": "16_mclp.py", "has_kept": False, "has_fixed": False, "has_beta": False, "has_sigma": False, "k_is_total": False}
+    "05_ip": {"label": "Ana IP Modeli (12 MCDM Varyantı)", "script": "05_ip.py", "has_kept": True, "has_fixed": True, "has_beta": True, "has_sigma": True, "k_is_total": True, "weights": ["risk", "population", "shelter"]},
+    "11_lex": {"label": "Lexicographic Max-Min (Adalet Odaklı)", "script": "11_lexicographic.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False, "weights": ["risk", "population"]},
+    "13_eps": {"label": "ε-Constraint (Pareto Cephesi)", "script": "13_eps_constraint.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False, "weights": ["risk", "population"]},
+    "14_single": {"label": "Single-Stage MILP (Entegre Equity)", "script": "14_single_stage.py", "has_kept": False, "has_fixed": False, "has_beta": True, "has_sigma": True, "k_is_total": False, "weights": ["risk", "population"]},
+    "16_mclp": {"label": "MCLP Benchmark (Klasik Kapsama)", "script": "16_mclp.py", "has_kept": False, "has_fixed": False, "has_beta": False, "has_sigma": False, "k_is_total": False, "weights": ["risk", "population", "shelter"]}
 }
 
 def run_single_job(job, progress_callback=None):
     """Tek bir işi çalıştır, metadata JSON üret, harita ve grafik üret."""
     model_key = job.get('model', '05_ip')
     model_info = MODEL_OPTIONS.get(model_key, MODEL_OPTIONS['05_ip'])
-    script_path = str(PROJECT_ROOT / "src" / model_info['script'])
-    
-    cmd = [sys.executable, script_path]
-    
-    # K parametresi: eski modeller K'yı "yeni eklenecek sayı" olarak yorumlar
-    if model_info['k_is_total']:
-        cmd.extend(["--K", str(job['k_total'])])
-    else:
-        k_new = job['k_total'] - len(job['kept_mevcut']) if job['kept_mevcut'] else job['k_total']
-        cmd.extend(["--K", str(k_new)])
-    
-    cmd.extend(["--weight", job['weight_type']])
-    
-    if model_info['has_beta']:
-        cmd.extend(["--beta", str(job['beta'])])
-    if model_info['has_sigma']:
-        cmd.extend(["--sigma", job['sigma']])
-    
-    if not job['kept_mevcut']:
-        cmd.append("--no-mevcut")
-    elif model_info['has_kept']:
-        cmd.extend(["--kept", ",".join(map(str, job['kept_mevcut']))])
-        
-    if job.get('fixed_aday') and model_info['has_fixed']:
-        cmd.extend(["--fixed", ",".join(map(str, job['fixed_aday']))])
+    try:
+        cmd = build_solver_command(job, model_info, PROJECT_ROOT)
+    except ValueError as exc:
+        return {"success": False, "error": str(exc), "stdout": ""}
     
     res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
     
     if res.returncode != 0:
         return {"success": False, "error": res.stderr, "stdout": res.stdout}
     
-    # Dosya ismi şablonu (05_ip.py ile tutarlı)
-    sg_str = "" if job['sigma'] == "800" else f"_sg{job['sigma']}"
-    nm_str = "_nomez" if not job['kept_mevcut'] else ""
-    wt_str = f"_{job['weight_type']}"
-    file_suffix = f"SA{sg_str}_b{int(float(job['beta'])*100)}_K{job['k_total']}_t0.15{nm_str}{wt_str}"
-    
-    # En yeni summary dosyasını bul
-    sum_pattern = f"summary_all_*{file_suffix}*"
-    sum_files = sorted(MODELS_DIR.glob(sum_pattern), key=lambda x: x.stat().st_mtime)
-    latest_summary = sum_files[-1] if sum_files else None
-    
-    # En yeni IP dosyasını bul (ilk MCDM varyantı yeterli, harita için)
-    ip_pattern = f"ip_v1_*{file_suffix}*"
-    ip_files = sorted(MODELS_DIR.glob(ip_pattern), key=lambda x: x.stat().st_mtime)
-    latest_ip = ip_files[-1] if ip_files else None
+    outputs = find_solver_outputs(job, model_key, MODELS_DIR, RESULTS_DIR)
+    latest_summary = outputs["summary"]
+    latest_ip = outputs["ip"]
+    latest_result = outputs["result"]
     
     # Harita ve Grafik Üretimi
     timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -178,7 +153,7 @@ def run_single_job(job, progress_callback=None):
             plot_solution_map(yeni_df, kept_df, removed_df, fixed_df, map_out,
                               title=f"K={job['k_total']} | {weight_label(job['weight_type'])} | {scenario_tag}",
                               cov_df=cov_df_run,
-                              sigma=int(job['sigma']))
+                              sigma=get_sigma_radius(job['sigma']))
             map_file = f"{prefix}_map.html"
             
             # Grafik
@@ -228,6 +203,7 @@ def run_single_job(job, progress_callback=None):
         "files": {
             "ip_file": latest_ip.name if latest_ip else None,
             "summary_file": latest_summary.name if latest_summary else None,
+            "result_file": project_relative(latest_result, PROJECT_ROOT),
             "map_file": map_file,
             "chart_file": chart_file
         },
@@ -273,7 +249,7 @@ with tab_single:
         selected_model = MODEL_OPTIONS[model_choice]
         
         weight_type = st.radio("Optimizasyon Hedefi:", 
-                               options=["risk", "population", "shelter"], 
+                               options=selected_model.get("weights", ["risk", "population", "shelter"]), 
                                format_func=weight_label)
         
         if selected_model['has_beta']:
@@ -431,23 +407,111 @@ with tab_queue:
             status_text = st.empty()
             log_area = st.empty()
             
+            # Load completed jobs log
+            from config import COMPLETED_JOBS_FILE
+            completed_runs = []
+            if COMPLETED_JOBS_FILE.exists():
+                try:
+                    with open(COMPLETED_JOBS_FILE, "r", encoding="utf-8") as f:
+                        completed_runs = json.load(f)
+                except Exception:
+                    completed_runs = []
+
             completed = 0
             errors = 0
             
             for idx, job in enumerate(jobs):
                 status_text.info(f"⏳ Çalışıyor ({idx+1}/{len(jobs)}): **{weight_label(job['weight_type'])}** | K={job['k_total']} | β={job['beta']}")
                 
-                result = run_single_job(job)
-                
-                if result["success"]:
-                    completed += 1
-                else:
+                t_start = time.time()
+                try:
+                    result = run_single_job(job)
+                    elapsed = time.time() - t_start
+                    
+                    if result["success"]:
+                        completed += 1
+                        success_flag = True
+                        err_msg = ""
+                    else:
+                        errors += 1
+                        success_flag = False
+                        err_msg = result.get("error", "Bilinmeyen hata")
+                except Exception as ex:
                     errors += 1
+                    elapsed = time.time() - t_start
+                    success_flag = False
+                    err_msg = str(ex)
+                    
+                # Append to completed runs
+                completed_runs.append({
+                    "id": job["id"],
+                    "model": job.get("model", "05_ip"),
+                    "k_total": job["k_total"],
+                    "weight_type": job["weight_type"],
+                    "beta": job["beta"],
+                    "sigma": job["sigma"],
+                    "kept_mevcut": job["kept_mevcut"],
+                    "fixed_aday": job.get("fixed_aday", []),
+                    "success": success_flag,
+                    "error": err_msg,
+                    "duration_s": elapsed,
+                    "execution_time": time.strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Write back immediately
+                try:
+                    with open(COMPLETED_JOBS_FILE, "w", encoding="utf-8") as f:
+                        json.dump(completed_runs, f, indent=4, ensure_ascii=False)
+                except Exception:
+                    pass
                     
                 progress_bar.progress((idx + 1) / len(jobs))
                 
             # Kuyruk temizle
             save_jobs([])
+            st.success(f"İşlemler tamamlandı! Başarılı: {completed}, Hatalı: {errors}")
+            st.rerun()
+
+    # Completed jobs history panel
+    from config import COMPLETED_JOBS_FILE
+    if COMPLETED_JOBS_FILE.exists():
+        st.markdown("---")
+        st.subheader("📋 Çalıştırma Geçmişi (Completed Jobs Log)")
+        
+        try:
+            with open(COMPLETED_JOBS_FILE, "r", encoding="utf-8") as f:
+                completed_runs = json.load(f)
+        except Exception:
+            completed_runs = []
+            
+        if completed_runs:
+            c_rows = []
+            for r in completed_runs:
+                m_key = r.get("model", "05_ip")
+                c_rows.append({
+                    "Zaman Damgası": r.get("execution_time", ""),
+                    "Durum": "✅ Başarılı" if r.get("success", False) else f"❌ Hata: {r.get('error', '')[:50]}",
+                    "Çalışma Süresi (sn)": f"{r.get('duration_s', 0.0):.2f}",
+                    "Model": MODEL_OPTIONS.get(m_key, {}).get("label", m_key),
+                    "Hedef": weight_label(r["weight_type"]),
+                    "K (Bütçe)": r["k_total"],
+                    "Beta": r["beta"],
+                    "Sigma": r["sigma"],
+                    "Senaryo": "Mevcutları Koru + Yeni Ekle" if r["kept_mevcut"] else "Tümünü Sıfırdan Yerleştir (Serbest)"
+                })
+            
+            st.dataframe(pd.DataFrame(c_rows), use_container_width=True, hide_index=True)
+            
+            if st.button("🗑️ Çalıştırma Geçmişini Temizle"):
+                try:
+                    with open(COMPLETED_JOBS_FILE, "w", encoding="utf-8") as f:
+                        json.dump([], f)
+                    st.success("Çalıştırma geçmişi temizlendi.")
+                    st.rerun()
+                except Exception as ex:
+                    st.error(f"Geçmiş temizlenirken hata: {ex}")
+        else:
+            st.info("Kuyruktan henüz tamamlanan bir iş bulunmuyor.")
 def translate_scenario(tag):
     if tag == "Ekleme":
         return "Mevcutları Koru + Yeni Ekle"
@@ -522,7 +586,7 @@ with tab_results:
             use_container_width=True, 
             hide_index=True,
             on_select="rerun",
-            selection_mode="single_row",
+            selection_mode="single-row",
             key="df_detail_select"
         )
         
@@ -624,18 +688,9 @@ with tab_results:
                 sure_val = f"{row['sure_s']:.3f} sn" if "sure_s" in row and pd.notna(row["sure_s"]) else "N/A"
                 col_v5.metric("Çözüm Süresi", sure_val)
                 
-                # Dosya suffix oluştur
-                sg_str = "" if params["sigma"] == "800" else f"_sg{params['sigma']}"
-                tr_str = "_t0.15" # default truncation
-                nm_str = "_nomez" if len(params["kept_mevcut"]) == 0 else ""
-                wt_str = f"_{params['weight_type']}"
-                file_suffix = f"S{params.get('scenario_tag','A')}{sg_str}_b{int(params['beta']*100)}_K{params['k_total']}{tr_str}{nm_str}{wt_str}"
-                
-                ip_name = f"ip_{vname}_{mcdm_sel}_{scen_sel}_{file_suffix}.xlsx"
-                cov_name = f"coverage_{vname}_{mcdm_sel}_{scen_sel}_{file_suffix}.xlsx"
-                
-                ip_path = MODELS_DIR / ip_name
-                cov_path = MODELS_DIR / cov_name
+                variant_paths = variant_output_paths(params, MODELS_DIR, vname, mcdm_sel, scen_sel)
+                ip_path = variant_paths["ip"]
+                cov_path = variant_paths["coverage"]
                 
                 col_left, col_right = st.columns([1, 2])
                 
@@ -677,7 +732,7 @@ with tab_results:
                             yeni_df, kept_df, removed_df, fixed_df, temp_map_path,
                             title=f"K={params['k_total']} | {selected_combo} | {translate_scenario(params.get('scenario_tag','?'))}",
                             cov_df=cov_df_detail,
-                            sigma=int(params.get("sigma", 800))
+                            sigma=get_sigma_radius(params.get("sigma", 800))
                         )
                         
                         if temp_map_path.exists():
@@ -771,9 +826,7 @@ with tab_results:
                         v_vname = c_row["version"]
                         v_mcdm = c_row["mcdm"]
                         v_scen = c_row["senaryo"]
-                        v_suffix = f"S{params.get('scenario_tag','A')}{sg_str}_b{int(params['beta']*100)}_K{params['k_total']}{tr_str}{nm_str}{wt_str}"
-                        v_cov_name = f"coverage_{v_vname}_{v_mcdm}_{v_scen}_{v_suffix}.xlsx"
-                        v_cov_path = MODELS_DIR / v_cov_name
+                        v_cov_path = variant_output_paths(params, MODELS_DIR, v_vname, v_mcdm, v_scen)["coverage"]
                         
                         v_gini = 0.0
                         if v_cov_path.exists():
@@ -828,7 +881,10 @@ with tab_results:
                 
                 k_total = params["k_total"]
                 weight_type = params["weight_type"]
-                pareto_file = RESULTS_DIR / "eps_constraint" / f"pareto_results_K{k_total}_{weight_type}.xlsx"
+                pareto_file = RESULTS_DIR / "eps_constraint" / f"pareto_results_{pareto_file_suffix(params)}.xlsx"
+                legacy_pareto_file = RESULTS_DIR / "eps_constraint" / f"pareto_results_K{k_total}_{weight_type}.xlsx"
+                if not pareto_file.exists() and legacy_pareto_file.exists():
+                    pareto_file = legacy_pareto_file
                 
                 if pareto_file.exists():
                     df_pareto = pd.read_excel(pareto_file)
@@ -906,6 +962,39 @@ with tab_results:
                         data=pdf_data,
                         file_name=f"{selected_id}_report.pdf",
                         mime="application/pdf"
+                    )
+
+            # Excel Rapor Butonu
+            st.markdown("---")
+            st.markdown("### 📥 Excel Çözüm Raporu (Çok Sayfalı)")
+            excel_path = RESULTS_DIR / f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx"
+            
+            col_xls1, col_xls2 = st.columns(2)
+            with col_xls1:
+                if st.button("📊 Excel Raporu Oluştur / Güncelle"):
+                    with st.spinner("Excel oluşturuluyor..."):
+                        try:
+                            from excel_report_generator import generate_excel_report
+                            generate_excel_report(
+                                MODELS_DIR / f"{selected_id}_metadata.json",
+                                excel_path,
+                                vname,
+                                mcdm_sel,
+                                scen_sel
+                            )
+                            st.success("✅ Excel raporu başarıyla oluşturuldu!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Excel oluşturulurken hata: {e}")
+            with col_xls2:
+                if excel_path.exists():
+                    with open(excel_path, "rb") as f:
+                        xls_data = f.read()
+                    st.download_button(
+                        label="📥 Excel Raporunu İndir",
+                        data=xls_data,
+                        file_name=f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
             
             # Terminal çıktısı
@@ -1068,15 +1157,7 @@ with tab_compare:
                             v_vname = best_row["version"]
                             v_mcdm = best_row["mcdm"]
                             v_scen = best_row["senaryo"]
-                            
-                            sg_str = "" if rd['parameters']["sigma"] == "800" else f"_sg{rd['parameters']['sigma']}"
-                            tr_str = "_t0.15" # default
-                            nm_str = "_nomez" if len(rd['parameters']["kept_mevcut"]) == 0 else ""
-                            wt_str = f"_{rd['parameters']['weight_type']}"
-                            v_suffix = f"S{rd['parameters'].get('scenario_tag','A')}{sg_str}_b{int(rd['parameters']['beta']*100)}_K{rd['parameters']['k_total']}{tr_str}{nm_str}{wt_str}"
-                            
-                            v_cov_name = f"coverage_{v_vname}_{v_mcdm}_{v_scen}_{v_suffix}.xlsx"
-                            v_cov_path = MODELS_DIR / v_cov_name
+                            v_cov_path = variant_output_paths(rd["parameters"], MODELS_DIR, v_vname, v_mcdm, v_scen)["coverage"]
                             
                             v_gini = 0.0
                             if v_cov_path.exists():
@@ -1505,5 +1586,3 @@ with tab_profile:
                 
             import streamlit_folium as sf
             sf.st_folium(m_folium, height=400, use_container_width=True, key=f"micro_map_{norm_selected}")
-
-

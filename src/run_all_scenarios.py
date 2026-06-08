@@ -6,7 +6,7 @@ each experiment by calling the appropriate Python scripts with CLI arguments.
 Usage:
     python src/run_all_scenarios.py                     # run all experiments
     python src/run_all_scenarios.py --name Baseline_SA  # run specific experiment
-    python src/run_all_scenarios.py --name TwoTier      # run experiments matching name
+    python src/run_all_scenarios.py --name Adaptive     # run experiments matching name
     python src/run_all_scenarios.py --list               # list available experiments
 
 CLI args from the config are passed through to each script automatically.
@@ -20,6 +20,8 @@ import sys
 import time
 from pathlib import Path
 
+from scenario_utils import fuzzy_coverage_paths
+
 SRC = Path(__file__).resolve().parent
 ROOT = SRC.parent
 CONFIG_FILE = ROOT / "experiments_config.json"
@@ -32,20 +34,27 @@ STEPS_PRIORITY = {
     "15_compromise": SRC / "15_compromise.py",
 }
 
+STEPS_WITH_TRUNCATE = {"05_ip", "08_lscp", "11_lexicographic", "14_single_stage"}
+
+
+def total_k_from_config(cfg: dict) -> int:
+    """Convert config K (new containers) to total containers for scripts that need totals."""
+    k_new = int(cfg.get("K", 8))
+    return k_new if cfg.get("no_mevcut", False) else k_new + 12
+
 
 def build_args(cfg: dict, step: str) -> list[str]:
     """Build CLI args for a given step, passing only params the script supports."""
     args = [sys.executable, str(STEPS_PRIORITY[step])]
-    # All scripts accept --scenario
-    if "scenario" in cfg:
+    if step != "15_compromise" and "scenario" in cfg:
         args += ["--scenario", cfg["scenario"]]
-    # --beta, --K, --truncate, --no-mevcut: all IP methods now support these
     if step != "15_compromise":
         if "sigma" in cfg:
             args += ["--sigma", cfg["sigma"]]
-        if "K" in cfg:
-            args += ["--K", str(cfg["K"])]
-        if cfg.get("truncate", 0) > 0:
+        if "K" in cfg and step != "08_lscp":
+            k_value = total_k_from_config(cfg) if step == "05_ip" else int(cfg["K"])
+            args += ["--K", str(k_value)]
+        if step in STEPS_WITH_TRUNCATE and "truncate" in cfg:
             args += ["--truncate", str(cfg["truncate"])]
         if cfg.get("no_mevcut", False):
             args.append("--no-mevcut")
@@ -53,6 +62,19 @@ def build_args(cfg: dict, step: str) -> list[str]:
     if step in ("05_ip", "11_lexicographic", "13_eps_constraint", "14_single_stage"):
         if "beta" in cfg:
             args += ["--beta", str(cfg["beta"])]
+    if step == "15_compromise":
+        if "scenario" in cfg:
+            args += ["--scenario", cfg["scenario"]]
+        if "sigma" in cfg:
+            args += ["--sigma", cfg["sigma"]]
+        if "beta" in cfg:
+            args += ["--beta", str(cfg["beta"])]
+        if "K" in cfg:
+            args += ["--K", str(total_k_from_config(cfg))]
+        if "weight" in cfg:
+            args += ["--weight", str(cfg["weight"])]
+        if cfg.get("no_mevcut", False):
+            args.append("--no-mevcut")
     return args
 
 
@@ -72,19 +94,31 @@ def run(label: str, cmd: list[str]) -> bool:
     return ok
 
 
+def coverage_files_exist(sigma: str) -> bool:
+    """Return True when the current fuzzy coverage inputs for sigma exist."""
+    paths = fuzzy_coverage_paths(sigma)
+    required = ["mu_aday", "mu_mevcut", "Q_i_vector"]
+    return all(paths[key].exists() for key in required)
+
+
+def coverage_generation_command(sigma: str) -> list[str]:
+    """Build the command that generates fuzzy coverage files for sigma."""
+    return [sys.executable, str(SRC / "04_fuzzy_coverage.py"), "--sigma", sigma]
+
+
+def ensure_fuzzy_coverage(sigma: str, label: str = "") -> bool:
+    """Run 04_fuzzy_coverage.py for sigma if files do not already exist."""
+    if coverage_files_exist(sigma):
+        return True
+    return run(f"Fuzzy coverage sigma={sigma} {label}", coverage_generation_command(sigma))
+
+
 def ensure_fcm(sigma: str, label: str = "") -> bool:
-    """Run 04_fcm.py for given sigma if files don't already exist."""
-    fcm_dir = ROOT / "results" / "fcm"
-    suffix = f"_s{sigma}" if sigma != "800" else ""
-    f1 = fcm_dir / f"mu_aday_140x17{suffix}.xlsx"
-    f2 = fcm_dir / f"mu_mevcut_12x17{suffix}.xlsx"
-    if f1.exists() and f2.exists():
-        return True  # already exists
-    return run(f"FCM sigma={sigma} {label}",
-               [sys.executable, str(SRC / "04_fcm.py"), "--sigma", sigma])
+    """Backward-compatible alias for older callers."""
+    return ensure_fuzzy_coverage(sigma, label)
 
 
-def run_experiment(cfg: dict) -> bool:
+def run_experiment(cfg: dict, dry_run: bool = False) -> bool:
     name = cfg["name"]
     print()
     print("#" * 70)
@@ -93,15 +127,22 @@ def run_experiment(cfg: dict) -> bool:
     print(f"#  Params: {json.dumps(pars)}")
     print("#" * 70)
 
-    # Ensure FCM files exist
+    # Ensure fuzzy coverage files exist
     sigma = cfg.get("sigma", "800")
-    if not ensure_fcm(sigma, name):
+    if dry_run:
+        if not coverage_files_exist(sigma):
+            print(f"[DRY-RUN] would generate coverage: {' '.join(coverage_generation_command(sigma))}")
+    elif not ensure_fuzzy_coverage(sigma, name):
         return False
 
     all_ok = True
     for step in cfg.get("steps", list(STEPS_PRIORITY)):
         cmd = build_args(cfg, step)
-        ok = run(f"{name} {step}", cmd)
+        if dry_run:
+            print(f"[DRY-RUN] {name} {step}: {' '.join(cmd)}")
+            ok = True
+        else:
+            ok = run(f"{name} {step}", cmd)
         if not ok:
             all_ok = False
     return all_ok
@@ -113,6 +154,7 @@ def main():
     parser.add_argument("--name", type=str, default=None,
                         help="Run only experiment(s) whose name contains this string")
     parser.add_argument("--list", action="store_true", help="List available experiments")
+    parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them")
     args = parser.parse_args()
 
     with open(CONFIG_FILE, encoding="utf-8") as f:
@@ -140,10 +182,12 @@ def main():
 
     total = 0
     ok_count = 0
+    matched_any = False
     for exp in experiments:
         name = exp["name"]
         if args.name and args.name.lower() not in name.lower():
             continue
+        matched_any = True
 
         # Handle beta sweeps
         beta_sweep = exp.pop("_beta_sweep", None)
@@ -153,17 +197,22 @@ def main():
                 sweep_cfg["beta"] = b
                 sweep_cfg["name"] = f"{name}_b{int(b*100)}"
                 total += 1
-                if run_experiment(sweep_cfg):
+                if run_experiment(sweep_cfg, dry_run=args.dry_run):
                     ok_count += 1
             exp["_beta_sweep"] = beta_sweep  # restore for listing
         else:
             total += 1
-            if run_experiment(exp):
+            if run_experiment(exp, dry_run=args.dry_run):
                 ok_count += 1
+
+    if not matched_any:
+        print(f"No experiments matched --name={args.name!r}. Use --list to see available experiments.")
+        return 1
 
     print()
     print("=" * 70)
-    print(f"  TUM DENEYSEL COZUMLER TAMAMLANDI: {ok_count}/{total} basarili")
+    label = "DRY-RUN TAMAMLANDI" if args.dry_run else "TUM DENEYSEL COZUMLER TAMAMLANDI"
+    print(f"  {label}: {ok_count}/{total} basarili")
     print("=" * 70)
     return 0 if ok_count == total else 1
 
