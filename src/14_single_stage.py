@@ -181,6 +181,50 @@ def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_
         out.to_excel(w_, sheet_name="Ozet", index=False)
         mahalle_df.to_excel(w_, sheet_name="Mahalle_Kapsama", index=False)
     logger.info(f"\n  -> {out_path}")
+
+    # --------------------------------------------------
+    # app.py uyumlulugu icin ip / coverage / summary dosyalari
+    # --------------------------------------------------
+    MODELS_DIR = (Path(__file__).resolve().parent.parent / "results" / "models")
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    VER = "Tek-Asamali_MILP_V3"
+
+    # Suffix without mcdm part (matches ip_file_suffix in app_runner.py)
+    suffix = f"S{SCENARIO}{sg_str}{tr_str}{nm_str}_b{int(BETA*100)}{k_str}{wt_str}"
+
+    # 1. ip file — selected parcel list with coordinates
+    aday_data = pd.read_excel(DATA / "adaylar_140.xlsx")
+    selected_df = aday_data[aday_data["S_No"].isin(secilen)].copy()
+    toplam_mu = {}
+    for sno in secilen:
+        coverage_sum = sum(MU[(sno, mh)] * P[sno] for mh in mahalleler if mh in R)
+        toplam_mu[sno] = round(coverage_sum, 4)
+    selected_df["toplam_mu_saglanan"] = selected_df["S_No"].map(toplam_mu).fillna(0.0)
+    ip_name = f"ip_{VER}_{MCDM_METHOD}_{MCDM_FOCUS}_{suffix}.xlsx"
+    selected_df.to_excel(MODELS_DIR / ip_name, index=False)
+    logger.info(f"  -> {MODELS_DIR / ip_name}")
+
+    # 2. coverage file — per-mahalle
+    cov_df = mahalle_df.rename(columns={"C_i": "toplam_kapsama"})
+    cov_name = f"coverage_{VER}_{MCDM_METHOD}_{MCDM_FOCUS}_{suffix}.xlsx"
+    cov_df.to_excel(MODELS_DIR / cov_name, index=False)
+    logger.info(f"  -> {MODELS_DIR / cov_name}")
+
+    # 3. summary_all — one-row variant table (app.py compatibility)
+    summary_row = pd.DataFrame([{
+        "version": VER,
+        "mcdm": MCDM_METHOD,
+        "senaryo": MCDM_FOCUS,
+        "Z_total": round(z_v, 4),
+        "RxC": round(rxc_v, 4),
+        "min_mahalle_cov": round(mahalle_df["C_i"].min(), 4),
+        "avg_mahalle_cov": round(mahalle_df["C_i"].mean(), 4),
+        "sure_s": None
+    }])
+    sum_name = f"summary_all_{suffix}.xlsx"
+    summary_row.to_excel(MODELS_DIR / sum_name, index=False)
+    logger.info(f"  -> {MODELS_DIR / sum_name}")
+
     logger.info("== 14_single_stage.py tamamlandi ==")
 
 

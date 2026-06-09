@@ -3,7 +3,7 @@
 ## Comprehensive Academic Documentation
 
 **Course:** IE492 — Graduation Project II  
-**Institution:** Istanbul Technical University, Industrial Engineering Department  
+**Institution:** Industrial Engineering Department  
 **Date:** June 2026  
 
 ---
@@ -67,17 +67,17 @@ The system produces 12 solution variants (3 MCDM methods × 3 AHP scenarios × T
 
 The Sultanbeyli container location problem is formally classified according to the taxonomy of ReVelle et al. (2008) and Daskin (1995):
 
-| Dimension | Classification | Justification |
-|-----------|---------------|---------------|
-| **Spatial structure** | Discrete | 140 candidate parcel locations |
-| **Temporal structure** | Static, single-period | One-time pre-positioning decision |
-| **Objective** | Maximization | Risk-weighted coverage + quality bonus |
-| **Coverage model** | Continuous (Gaussian fuzzy) | Smooth decay beyond 300m core radius |
-| **Facility type** | Identical, capacitated | All containers are interchangeable |
-| **Demand model** | Node-based | 140 parcels serve as both demand and candidate sites |
-| **Candidate sites** | 140 + 12 fixed | 140 new candidates + 12 existing fixed |
-| **Constraint type** | Budget, fixed, minimum | $K$ total, existing preserved, min coverage |
-| **Uncertainty** | Stochastic (road accessibility) | $Q_i$ as probabilistic penalty |
+| Dimension              | Classification                  | Justification                                        |
+| ---------------------- | ------------------------------- | ---------------------------------------------------- |
+| **Spatial structure**  | Discrete                        | 140 candidate parcel locations                       |
+| **Temporal structure** | Static, single-period           | One-time pre-positioning decision                    |
+| **Objective**          | Maximization                    | Risk-weighted coverage + quality bonus               |
+| **Coverage model**     | Continuous (Gaussian fuzzy)     | Smooth decay beyond 300m core radius                 |
+| **Facility type**      | Identical, capacitated          | All containers are interchangeable                   |
+| **Demand model**       | Node-based                      | 140 parcels serve as both demand and candidate sites |
+| **Candidate sites**    | 140 + 12 fixed                  | 140 new candidates + 12 existing fixed               |
+| **Constraint type**    | Budget, fixed, minimum          | $K$ total, existing preserved, min coverage          |
+| **Uncertainty**        | Stochastic (road accessibility) | $Q_i$ as probabilistic penalty                       |
 
 This classification places the problem at the intersection of the **Maximal Covering Location Problem (MCLP)** (Church & ReVelle, 1974) and **set covering** (Toregas et al., 1971), extended with continuous fuzzy membership functions and multi-criteria preprocessing.
 
@@ -85,31 +85,31 @@ This classification places the problem at the intersection of the **Maximal Cove
 
 ### 1.3.1 Sets
 
-| Symbol | Description | Cardinality |
-|--------|-------------|-------------|
-| $I$ | Set of demand points (candidate parcels) | $\|I\| = 140$ |
-| $J$ | Set of candidate facility locations | $\|J\| = 140$ |
-| $J_F \subseteq J$ | Set of existing (fixed) facilities | $\|J_F\| = 12$ |
-| $M$ | Set of neighborhoods (*mahalleler*) | $\|M\| = 17$ |
+| Symbol            | Description                                        | Cardinality       |
+| ----------------- | -------------------------------------------------- | ----------------- |
+| $I$               | Set of demand points (candidate parcels)           | $\|I\| = 140$     |
+| $J$               | Set of candidate facility locations                | $\|J\| = 140$     |
+| $J_F \subseteq J$ | Set of existing (fixed) facilities                 | $\|J_F\| = 12$    |
+| $M$               | Set of neighborhoods (*mahalleler*)                | $\|M\| = 17$      |
 | $I_m \subseteq I$ | Set of demand points belonging to neighborhood $m$ | varies by mahalle |
 
 ### 1.3.2 Parameters
 
-| Symbol | Description | Source / Range |
-|--------|-------------|----------------|
-| $K$ | Budget: number of new containers to place | User-defined (default: 5) |
-| $R_i$ | MCDM risk score for parcel $i$ | TOPSIS output, $[0, 1]$ |
-| $Q_i$ | Road accessibility penalty for parcel $i$ | Scenario-dependent, $[0, 1]$ |
-| $P_j$ | Population weight of candidate site $j$ | Per-parcel road accessibility, $[0, 1]$ |
-| $\mu_{ij}$ | Fuzzy coverage membership from site $j$ to demand $i$ | Gaussian model, $[0, 1]$ |
-| $\mu_{i}^{\text{mev}}$ | Coverage from existing fixed facilities | Precomputed, $[0, 1]$ |
-| $\beta$ | Quality weight parameter | $[0, 1]$, default $0.30$ |
-| $q_j$ | Quality score of candidate site $j$ | Infrastructure composite |
-| $\alpha$ | Equity weight parameter | Default $0.20$ |
-| $\varepsilon_{\text{trunc}}$ | Fuzzy membership truncation threshold | Default $0.15$ |
-| $\tau$ | Minimum neighborhood coverage threshold | Default $0.50$ |
-| $\sigma_m$ | Adaptive Gaussian spread for neighborhood $m$ | $[400, 1200]$ m |
-| $d_{\text{core}}$ | Core coverage radius (full membership) | $300$ m |
+| Symbol                       | Description                                           | Source / Range                          |
+| ---------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| $K$                          | Budget: number of new containers to place             | User-defined (default: 5)               |
+| $R_i$                        | MCDM risk score for parcel $i$                        | TOPSIS output, $[0, 1]$                 |
+| $Q_i$                        | Road accessibility penalty for parcel $i$             | Scenario-dependent, $[0, 1]$            |
+| $P_j$                        | Population weight of candidate site $j$               | Per-parcel road accessibility, $[0, 1]$ |
+| $\mu_{ij}$                   | Fuzzy coverage membership from site $j$ to demand $i$ | Gaussian model, $[0, 1]$                |
+| $\mu_{i}^{\text{mev}}$       | Coverage from existing fixed facilities               | Precomputed, $[0, 1]$                   |
+| $\beta$                      | Quality weight parameter                              | $[0, 1]$, default $0.30$                |
+| $q_j$                        | Quality score of candidate site $j$                   | Infrastructure composite                |
+| $\alpha$                     | Equity weight parameter                               | Default $0.20$                          |
+| $\varepsilon_{\text{trunc}}$ | Fuzzy membership truncation threshold                 | Default $0.15$                          |
+| $\tau$                       | Minimum neighborhood coverage threshold               | Default $0.50$                          |
+| $\sigma_m$                   | Adaptive Gaussian spread for neighborhood $m$         | $[400, 1200]$ m                         |
+| $d_{\text{core}}$            | Core coverage radius (full membership)                | $300$ m                                 |
 
 ### 1.3.3 Derived Parameters
 
@@ -134,6 +134,7 @@ The system consumes five primary data sources, each providing essential inputs t
 **File:** `parsel_boundaries.shp`  
 **Content:** Polygon geometries for 140 candidate parcels in Sultanbeyli  
 **Key fields:**
+
 - `PARSEL_ID`: Unique parcel identifier (1–140)
 - `MAHALLE`: Neighborhood name (Turkish, with special characters)
 - `geometry`: Shapely Polygon object
@@ -145,6 +146,7 @@ The system consumes five primary data sources, each providing essential inputs t
 **File:** `population.xlsx`  
 **Content:** Population counts per neighborhood  
 **Key fields:**
+
 - `mahalle`: Neighborhood name
 - `nufus`: Population count
 - `hane_ihtiyaci`: Household need metric (shelter proxy)
@@ -156,6 +158,7 @@ The system consumes five primary data sources, each providing essential inputs t
 **File:** `infrastructure.xlsx`  
 **Content:** Four infrastructure sub-criteria per parcel  
 **Key fields:**
+
 - `PARSEL_ID`: Parcel identifier
 - `Su`: Water infrastructure score
 - `Jen`: Generator/power infrastructure score
@@ -173,6 +176,7 @@ The weights (0.35, 0.30, 0.20, 0.15) reflect the relative importance of infrastr
 **File:** `seismic_risk.xlsx`  
 **Content:** Geological hazard ratings per neighborhood  
 **Key fields:**
+
 - `mahalle`: Neighborhood name
 - `risk_score`: Normalized damage risk value $[0, 1]$
 
@@ -183,6 +187,7 @@ The weights (0.35, 0.30, 0.20, 0.15) reflect the relative importance of infrastr
 **File:** `existing_containers.xlsx`  
 **Content:** 12 fixed disaster response container locations  
 **Key fields:**
+
 - `PARSEL_ID`: Parcel identifier of existing container
 - `mevcut`: Boolean flag (always TRUE)
 
@@ -228,12 +233,12 @@ This produces **one value per mahalle** — all parcels in the same neighborhood
 
 A 4-criteria decision matrix $\mathbf{D} \in \mathbb{R}^{140 \times 4}$ is constructed:
 
-| Criterion | Symbol | Direction | Source | Scope |
-|-----------|--------|-----------|--------|-------|
-| Seismic damage risk | $C_1$ | Cost (minimize) | `seismic_risk.xlsx` | Per-mahalle |
-| Infrastructure quality | $C_2$ | Benefit (maximize) | `infrastructure.xlsx` | Per-parcel |
-| Gap distance to nearest existing | $C_3$ | Benefit (maximize) | Computed | Per-parcel |
-| Shelter need | $C_4$ | Benefit (maximize) | `population.xlsx` | Per-mahalle |
+| Criterion                        | Symbol | Direction          | Source                | Scope       |
+| -------------------------------- | ------ | ------------------ | --------------------- | ----------- |
+| Seismic damage risk              | $C_1$  | Cost (minimize)    | `seismic_risk.xlsx`   | Per-mahalle |
+| Infrastructure quality           | $C_2$  | Benefit (maximize) | `infrastructure.xlsx` | Per-parcel  |
+| Gap distance to nearest existing | $C_3$  | Benefit (maximize) | Computed              | Per-parcel  |
+| Shelter need                     | $C_4$  | Benefit (maximize) | `population.xlsx`     | Per-mahalle |
 
 **$C_1$ (Damage Risk):** Assigned from mahalle-level risk scores — all parcels in the same neighborhood receive identical $C_1$ values.
 
@@ -269,14 +274,14 @@ This transformation compresses low scores and amplifies high scores, enhancing d
 
 The Analytic Hierarchy Process (Saaty, 1980) structures the weight elicitation problem as a hierarchy: the goal (container placement) at the top, four criteria ($C_1$–$C_4$) at the intermediate level, and 140 alternatives at the bottom. Experts provide pairwise comparisons on the **Saaty 1–9 scale**:
 
-| Intensity | Definition |
-|-----------|------------|
-| 1 | Equal importance |
-| 3 | Moderate importance |
-| 5 | Strong importance |
-| 7 | Very strong importance |
-| 9 | Extreme importance |
-| 2, 4, 6, 8 | Intermediate values |
+| Intensity  | Definition             |
+| ---------- | ---------------------- |
+| 1          | Equal importance       |
+| 3          | Moderate importance    |
+| 5          | Strong importance      |
+| 7          | Very strong importance |
+| 9          | Extreme importance     |
+| 2, 4, 6, 8 | Intermediate values    |
 
 ### 1.6.2 Pairwise Comparison Matrices
 
@@ -330,9 +335,9 @@ $$\text{CI} = \frac{\lambda_{\max} - n}{n - 1}, \quad \text{CR} = \frac{\text{CI
 
 where RI is the Random Index for matrix size $n$:
 
-| $n$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
-|-----|---|---|---|---|---|---|---|
-| RI | 0.00 | 0.00 | 0.58 | 0.90 | 1.12 | 1.24 | 1.32 |
+| $n$ | 1    | 2    | 3    | 4    | 5    | 6    | 7    |
+| --- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+| RI  | 0.00 | 0.00 | 0.58 | 0.90 | 1.12 | 1.24 | 1.32 |
 
 **Validation rule:** $\text{CR} < 0.10$ is required. For $n = 4$ criteria, $\text{RI} = 0.90$.
 
@@ -403,14 +408,14 @@ Higher $CC_i$ indicates closer proximity to the ideal point.
 
 The system produces 6 ranking variants:
 
-| MCDM Method | AHP Scenario | Normalization | Output |
-|-------------|-------------|---------------|--------|
-| TOPSIS | Baseline | L2 | `CC_topsis_baseline_l2` |
-| TOPSIS | Baseline | MinMax | `CC_topsis_baseline_minmax` |
-| TOPSIS | DamageFocused | L2 | `CC_topsis_damagefocused_l2` |
-| TOPSIS | DamageFocused | MinMax | `CC_topsis_damagefocused_minmax` |
-| TOPSIS | InfrastructureFocused | L2 | `CC_topsis_infrastructurefocused_l2` |
-| TOPSIS | InfrastructureFocused | MinMax | `CC_topsis_infrastructurefocused_minmax` |
+| MCDM Method | AHP Scenario          | Normalization | Output                                   |
+| ----------- | --------------------- | ------------- | ---------------------------------------- |
+| TOPSIS      | Baseline              | L2            | `CC_topsis_baseline_l2`                  |
+| TOPSIS      | Baseline              | MinMax        | `CC_topsis_baseline_minmax`              |
+| TOPSIS      | DamageFocused         | L2            | `CC_topsis_damagefocused_l2`             |
+| TOPSIS      | DamageFocused         | MinMax        | `CC_topsis_damagefocused_minmax`         |
+| TOPSIS      | InfrastructureFocused | L2            | `CC_topsis_infrastructurefocused_l2`     |
+| TOPSIS      | InfrastructureFocused | MinMax        | `CC_topsis_infrastructurefocused_minmax` |
 
 The optimization model uses the **MinMax** variants as risk scores $R_i$.
 
@@ -443,6 +448,7 @@ The Gaussian spread $\sigma_m$ adapts to neighborhood population density:
 $$\sigma_m = \sigma_{\max} - \frac{P_m - P_{\min}}{P_{\max} - P_{\min}} \cdot (\sigma_{\max} - \sigma_{\min})$$
 
 where:
+
 - $\sigma_{\min} = 400$ m (for the most densely populated neighborhood)
 - $\sigma_{\max} = 1200$ m (for the least densely populated neighborhood)
 - $P_m$ is the population of neighborhood $m$
@@ -456,6 +462,7 @@ The coverage membership $\mu_{ij}$ follows a two-tier structure:
 $$\mu_{ij} = \begin{cases} 1 & \text{if } d_{ij} \leq d_{\text{core}} \\ \exp\!\left(-\dfrac{(d_{ij} - d_{\text{core}})^2}{2\,\sigma_m^2}\right) & \text{if } d_{ij} > d_{\text{core}} \end{cases}$$
 
 where:
+
 - $d_{\text{core}} = 300$ m is the core radius within which coverage is guaranteed at full strength
 - $\sigma_m$ is the adaptive spread for the neighborhood containing demand point $i$
 
@@ -472,23 +479,23 @@ The threshold $\varepsilon_{\text{trunc}} = 0.15$ corresponds to a maximum effec
 $$d_{\max} = d_{\text{core}} + \sigma_m \sqrt{-2 \ln(\varepsilon_{\text{trunc}})} = 300 + \sigma_m \cdot 1.953$$
 
 | $\sigma_m$ (m) | $d_{\max}$ (m) |
-|-----------------|----------------|
-| 400 | 1,081 |
-| 600 | 1,472 |
-| 800 | 1,862 |
-| 1,000 | 2,253 |
-| 1,200 | 2,644 |
+| -------------- | -------------- |
+| 400            | 1,081          |
+| 600            | 1,472          |
+| 800            | 1,862          |
+| 1,000          | 2,253          |
+| 1,200          | 2,644          |
 
 ### 1.8.6 Coverage Modes
 
 The system supports four coverage computation modes:
 
-| Mode | Description | $\sigma$ Source |
-|------|-------------|-----------------|
-| **Adaptive** | Population-dependent spread | $\sigma_m$ per mahalle |
+| Mode            | Description                    | $\sigma$ Source                            |
+| --------------- | ------------------------------ | ------------------------------------------ |
+| **Adaptive**    | Population-dependent spread    | $\sigma_m$ per mahalle                     |
 | **RoadNetwork** | Adjusted by road accessibility | $\sigma_m \cdot p_i^{\text{access\_road}}$ |
-| **Fixed** | Uniform spread for all | Constant (e.g., 800m) |
-| **Composite** | Two-tier with fixed parameters | 800m outer, 300m core |
+| **Fixed**       | Uniform spread for all         | Constant (e.g., 800m)                      |
+| **Composite**   | Two-tier with fixed parameters | 800m outer, 300m core                      |
 
 ### 1.8.7 Composite Coverage Expression
 
@@ -497,6 +504,7 @@ The total coverage at demand point $i$ aggregates contributions from all facilit
 $$C_i = Q_i \cdot \left(\mu_{i}^{\text{mev}} + \sum_{j \in J \setminus J_F} \mu_{ij}^{\text{trunc}} \cdot P_j \cdot X_j \right)$$
 
 where:
+
 - $\mu_{i}^{\text{mev}} = \max_{j \in J_F} \mu_{ij}$ is the best coverage from existing facilities
 - $P_j$ is the per-parcel road accessibility weight
 - $X_j$ is the binary decision variable for new container placement
@@ -583,23 +591,23 @@ $$\text{coeff}(X_j) = \sum_{i \in I} R_i \cdot Q_i \cdot \mu_{ij}^{\text{trunc}}
 
 The $Q_i$ factor is used identically in all optimization models:
 
-| Model | File | Q_i Usage |
-|-------|------|-----------|
-| Main IP | `05_ip.py` | $C_i = Q_i \cdot (\mu_{\text{mev}} + \sum \mu \cdot P \cdot X)$ |
-| LSCP | `08_lscp.py` | Same coverage expression, used in feasibility constraints |
-| Lexicographic | `11_lexicographic.py` | Phase 1: same as Main IP; Phase 2: $C_i \geq t$ with Q_i in C_i |
-| ε-Constraint | `13_eps_constraint.py` | $C_i - s_i = \varepsilon$ with Q_i in C_i |
-| Single-Stage | `14_single_stage.py` | $C_i$ with Q_i, plus $W_i$ indicator |
-| MCLP | `16_mclp.py` | Binary coverage, Q_i not directly used (different model) |
+| Model         | File                   | Q_i Usage                                                       |
+| ------------- | ---------------------- | --------------------------------------------------------------- |
+| Main IP       | `05_ip.py`             | $C_i = Q_i \cdot (\mu_{\text{mev}} + \sum \mu \cdot P \cdot X)$ |
+| LSCP          | `08_lscp.py`           | Same coverage expression, used in feasibility constraints       |
+| Lexicographic | `11_lexicographic.py`  | Phase 1: same as Main IP; Phase 2: $C_i \geq t$ with Q_i in C_i |
+| ε-Constraint  | `13_eps_constraint.py` | $C_i - s_i = \varepsilon$ with Q_i in C_i                       |
+| Single-Stage  | `14_single_stage.py`   | $C_i$ with Q_i, plus $W_i$ indicator                            |
+| MCLP          | `16_mclp.py`           | Binary coverage, Q_i not directly used (different model)        |
 
 ### 1.9.7 Per-Parcel vs. Per-Mahalle Distinction
 
 The system uses **two distinct** road accessibility parameters:
 
-| Parameter | Scope | Generation | Used As |
-|-----------|-------|------------|---------|
-| $p_i^{\text{access\_road}}$ | Per-parcel | Mahalle base + per-parcel Gaussian noise | Weight $P_j$ inside coverage sum |
-| $p_m^{\text{road\_open}}$ | Per-mahalle | Mahalle base + per-mahalle Gaussian noise | Penalty $Q_i$ scaling entire coverage |
+| Parameter                   | Scope       | Generation                                | Used As                               |
+| --------------------------- | ----------- | ----------------------------------------- | ------------------------------------- |
+| $p_i^{\text{access\_road}}$ | Per-parcel  | Mahalle base + per-parcel Gaussian noise  | Weight $P_j$ inside coverage sum      |
+| $p_m^{\text{road\_open}}$   | Per-mahalle | Mahalle base + per-mahalle Gaussian noise | Penalty $Q_i$ scaling entire coverage |
 
 **$P_j$ (per-parcel):** Used as a multiplicative weight inside the coverage sum. Two parcels in the same mahalle have different $P_j$ values, reflecting parcel-level infrastructure differences.
 
@@ -607,13 +615,13 @@ The system uses **two distinct** road accessibility parameters:
 
 ### 1.9.8 Scenario Comparison
 
-| Aspect | Scenario A | Scenario B |
-|--------|------------|------------|
-| $Q_i$ values | All 1.0 | $[0.40, 0.99]$ per mahalle |
-| Coverage penalty | None | Up to 60% reduction |
-| Existing container coverage | Full | Reduced by Q_i |
-| Optimizer behavior | Pure risk-weighted | Biases toward accessible neighborhoods |
-| Result interpretation | Best case (all roads open) | Realistic case (road closure risk) |
+| Aspect                      | Scenario A                 | Scenario B                             |
+| --------------------------- | -------------------------- | -------------------------------------- |
+| $Q_i$ values                | All 1.0                    | $[0.40, 0.99]$ per mahalle             |
+| Coverage penalty            | None                       | Up to 60% reduction                    |
+| Existing container coverage | Full                       | Reduced by Q_i                         |
+| Optimizer behavior          | Pure risk-weighted         | Biases toward accessible neighborhoods |
+| Result interpretation       | Best case (all roads open) | Realistic case (road closure risk)     |
 
 ## 1.10 Main Integer Programming Model
 
@@ -677,20 +685,20 @@ The PuLP library interfaces with the HiGHS solver (preferred) or CBC (fallback).
 
 The main IP is executed as 12 variants:
 
-| MCDM Method | AHP Scenario | Normalization | Output Suffix |
-|-------------|-------------|---------------|---------------|
-| TOPSIS | Baseline | MinMax | `topsis_baseline_minmax` |
-| TOPSIS | DamageFocused | MinMax | `topsis_damagefocused_minmax` |
-| TOPSIS | InfrastructureFocused | MinMax | `topsis_infrastructurefocused_minmax` |
-| PROMETHEE | Baseline | — | `promethee_baseline` |
-| PROMETHEE | DamageFocused | — | `promethee_damagefocused` |
-| PROMETHEE | InfrastructureFocused | — | `promethee_infrastructurefocused` |
-| VIKOR | Baseline | — | `vikor_baseline` |
-| VIKOR | DamageFocused | — | `vikor_damagefocused` |
-| VIKOR | InfrastructureFocused | — | `vikor_infrastructurefocused` |
-| ELECTRE | Baseline | — | `electre_baseline` |
-| ELECTRE | DamageFocused | — | `electre_damagefocused` |
-| ELECTRE | InfrastructureFocused | — | `electre_infrastructurefocused` |
+| MCDM Method | AHP Scenario          | Normalization | Output Suffix                         |
+| ----------- | --------------------- | ------------- | ------------------------------------- |
+| TOPSIS      | Baseline              | MinMax        | `topsis_baseline_minmax`              |
+| TOPSIS      | DamageFocused         | MinMax        | `topsis_damagefocused_minmax`         |
+| TOPSIS      | InfrastructureFocused | MinMax        | `topsis_infrastructurefocused_minmax` |
+| PROMETHEE   | Baseline              | —             | `promethee_baseline`                  |
+| PROMETHEE   | DamageFocused         | —             | `promethee_damagefocused`             |
+| PROMETHEE   | InfrastructureFocused | —             | `promethee_infrastructurefocused`     |
+| VIKOR       | Baseline              | —             | `vikor_baseline`                      |
+| VIKOR       | DamageFocused         | —             | `vikor_damagefocused`                 |
+| VIKOR       | InfrastructureFocused | —             | `vikor_infrastructurefocused`         |
+| ELECTRE     | Baseline              | —             | `electre_baseline`                    |
+| ELECTRE     | DamageFocused         | —             | `electre_damagefocused`               |
+| ELECTRE     | InfrastructureFocused | —             | `electre_infrastructurefocused`       |
 
 ## 1.11 Alternative Optimization Models
 
@@ -787,6 +795,7 @@ $$\min \quad L_p = \left( \left|\frac{Z_1 - Z_1^*}{Z_1^*}\right|^p + \left|\frac
 for $p \in \{1, 2, \infty\}$, where $Z_1$ is total RxC coverage and $Z_2$ is the minimum neighborhood coverage.
 
 **Metric interpretation:**
+
 - $p = 1$: Manhattan distance — minimizes average deviation
 - $p = 2$: Euclidean distance — balances average and worst-case
 - $p = \infty$: Chebyshev distance — minimizes maximum deviation
@@ -798,6 +807,7 @@ for $p \in \{1, 2, \infty\}$, where $Z_1$ is total RxC coverage and $Z_2$ is the
 Coverage inequality across neighborhoods is measured by the Gini coefficient, adapted from income inequality analysis:
 
 **Lorenz curve construction:**
+
 1. Compute mean coverage per neighborhood: $C_m = \frac{1}{|I_m|}\sum_{i \in I_m} C_i$
 2. Sort neighborhoods by ascending coverage: $C_{(1)} \leq C_{(2)} \leq \ldots \leq C_{(M)}$
 3. Compute cumulative shares: $L_k = \frac{\sum_{i=1}^{k} C_{(i)}}{\sum_{i=1}^{M} C_{(i)}}$
@@ -863,16 +873,17 @@ Raw Data (Excel/Shapefile)
 
 **Key constants:**
 
-| Constant | Value | Role |
-|----------|-------|------|
-| `MAHALLE_COUNT` | 15 | Expected neighborhood count |
-| `COVERAGE_THRESHOLD` | 0.50 | Minimum acceptable coverage |
-| `TRUNCATION_THRESHOLD` | 0.15 | Fuzzy membership cutoff |
-| `DEFAULT_BETA` | 0.30 | Quality weight in objective |
-| `EQUITY_ALPHA` | 0.20 | Equity weight in single-stage model |
-| `EARTH_RADIUS` | 6,371,000 m | Haversine constant |
+| Constant               | Value       | Role                                |
+| ---------------------- | ----------- | ----------------------------------- |
+| `MAHALLE_COUNT`        | 15          | Expected neighborhood count         |
+| `COVERAGE_THRESHOLD`   | 0.50        | Minimum acceptable coverage         |
+| `TRUNCATION_THRESHOLD` | 0.15        | Fuzzy membership cutoff             |
+| `DEFAULT_BETA`         | 0.30        | Quality weight in objective         |
+| `EQUITY_ALPHA`         | 0.20        | Equity weight in single-stage model |
+| `EARTH_RADIUS`         | 6,371,000 m | Haversine constant                  |
 
 **Key functions:**
+
 - `norm_mahalle(name)`: Turkish character normalization using `str.maketrans` for deterministic filename generation
 - `get_mevcut_indices()`: Reads `mevcut_12.xlsx` to identify existing container parcel indices
 
@@ -883,6 +894,7 @@ Raw Data (Excel/Shapefile)
 **Purpose:** Reads 5 raw data sources, computes spatial features, and produces the normalized criteria matrix.
 
 **Data sources consumed:**
+
 1. Parcel geometry (shapefile) — polygon boundaries
 2. Population data (Excel) — per-neighborhood census
 3. Infrastructure scores (Excel) — Su, Jen, WC, Kamera per parcel
@@ -890,6 +902,7 @@ Raw Data (Excel/Shapefile)
 5. Existing container locations (Excel) — 12 fixed sites
 
 **Processing pipeline:**
+
 1. Compute parcel centroids from polygon geometry
 2. Generate synthetic road accessibility indicators ($p_i^{\text{access\_road}}$, $p_m^{\text{road\_open}}$) with $\text{seed} = 42$
 3. Build 4-criteria matrix: $C_1$ (damage), $C_2$ (infra composite), $C_3$ (gap distance), $C_4$ (shelter)
@@ -909,6 +922,7 @@ $$\mathbf{A} \mathbf{w} = \lambda_{\max} \mathbf{w}$$
 where $\lambda_{\max}$ is the principal eigenvalue and $\mathbf{w}$ is the normalized eigenvector (weights).
 
 **Implementation details:**
+
 - Column normalization → row averaging → weight vector
 - $\lambda_{\max}$ computed as mean of $(\mathbf{A}\mathbf{w})_i / w_i$
 - CR validation: $\text{CR} < 0.10$ with $\text{RI} = 0.90$ for $n = 4$
@@ -920,6 +934,7 @@ where $\lambda_{\max}$ is the principal eigenvalue and $\mathbf{w}$ is the norma
 **Purpose:** Ranks 140 parcels using TOPSIS with AHP-Entropy hybrid weights.
 
 **Normalization variants:**
+
 - **L2:** $v_{ij} = x_{ij} / \sqrt{\sum_i x_{ij}^2}$
 - **Min-Max:** $v_{ij} = (x_{ij} - \min_j) / (\max_j - \min_j)$
 
@@ -934,6 +949,7 @@ $$w_k^{\text{hybrid}} = \frac{w_k^{\text{AHP}} \cdot w_k^{\text{entropy}}}{\sum_
 **Purpose:** Computes the $\mu_{ij}$ coverage matrix using the Gaussian fuzzy model.
 
 **Algorithm:**
+
 1. Compute pairwise Euclidean distances $d_{ij}$ from parcel centroids
 2. For each demand point $i$, determine $\sigma_m$ based on neighborhood population
 3. Apply two-tier membership: $\mu_{ij} = 1$ if $d_{ij} \leq 300$ m, else Gaussian decay
@@ -942,12 +958,12 @@ $$w_k^{\text{hybrid}} = \frac{w_k^{\text{AHP}} \cdot w_k^{\text{entropy}}}{\sum_
 
 **Coverage modes:**
 
-| Mode | $\sigma$ | Description |
-|------|----------|-------------|
-| Adaptive | $400$–$1200$ m | Population-dependent spread |
-| RoadNetwork | Varies | Adjusted by road accessibility |
-| Fixed | Constant (e.g., 800 m) | Uniform spread |
-| Composite | 800 m with 300 m core | Two-tier structure |
+| Mode        | $\sigma$               | Description                    |
+| ----------- | ---------------------- | ------------------------------ |
+| Adaptive    | $400$–$1200$ m         | Population-dependent spread    |
+| RoadNetwork | Varies                 | Adjusted by road accessibility |
+| Fixed       | Constant (e.g., 800 m) | Uniform spread                 |
+| Composite   | 800 m with 300 m core  | Two-tier structure             |
 
 **Outputs:** Coverage matrix as pickle or CSV, distance matrices, Q_i vector.
 
@@ -1024,6 +1040,7 @@ $$w_k^{\text{hybrid}} = \frac{w_k^{\text{AHP}} \cdot w_k^{\text{entropy}}}{\sum_
 **Purpose:** Interactive web application for experiment design, job execution, and result visualization.
 
 **Tabs:**
+
 1. **Experiment Design:** Configure $\beta$, $K$, MCDM method, AHP scenario, coverage mode
 2. **Job Queue:** Background thread execution with real-time status
 3. **Solution Details:** Selected parcels, coverage maps, neighborhood statistics
@@ -1076,14 +1093,14 @@ data/results/
 
 ## 2.4 Code Quality Observations
 
-| Issue | Severity | Location |
-|-------|----------|----------|
-| Haversine function duplicated in 6 files | Medium | config.py, scenario_utils.py, 01_data_prep.py, 04_fuzzy_coverage.py, app.py, others |
-| Deprecated seaborn API usage | Low | app.py |
-| Bare `except:` clauses | Medium | Multiple modules |
-| No `pyproject.toml` or dependency lockfile | Medium | Project root |
-| Minimal test coverage | High | Only integration tests in `tests/` |
-| `config.py` reports `MAHALLE_COUNT=15` but data has 17 | Medium | config.py vs actual data |
+| Issue                                                  | Severity | Location                                                                            |
+| ------------------------------------------------------ | -------- | ----------------------------------------------------------------------------------- |
+| Haversine function duplicated in 6 files               | Medium   | config.py, scenario_utils.py, 01_data_prep.py, 04_fuzzy_coverage.py, app.py, others |
+| Deprecated seaborn API usage                           | Low      | app.py                                                                              |
+| Bare `except:` clauses                                 | Medium   | Multiple modules                                                                    |
+| No `pyproject.toml` or dependency lockfile             | Medium   | Project root                                                                        |
+| Minimal test coverage                                  | High     | Only integration tests in `tests/`                                                  |
+| `config.py` reports `MAHALLE_COUNT=15` but data has 17 | Medium   | config.py vs actual data                                                            |
 
 ---
 
@@ -1101,34 +1118,36 @@ Parameters are classified into three categories based on their role in the optim
 
 ### 3.2.1 Quality Weight $\beta$
 
-| Property | Value |
-|----------|-------|
-| Symbol | $\beta$ |
-| Range | $[0, 1]$ |
-| Default | $0.30$ |
-| Role | Balances coverage maximization ($\sum R_i C_i$) vs. site quality ($\sum q_j X_j$) |
-| Effect | $\beta = 0$: pure coverage maximization; $\beta = 1$: equal weight to quality |
+| Property | Value                                                                             |
+| -------- | --------------------------------------------------------------------------------- |
+| Symbol   | $\beta$                                                                           |
+| Range    | $[0, 1]$                                                                          |
+| Default  | $0.30$                                                                            |
+| Role     | Balances coverage maximization ($\sum R_i C_i$) vs. site quality ($\sum q_j X_j$) |
+| Effect   | $\beta = 0$: pure coverage maximization; $\beta = 1$: equal weight to quality     |
 
 **Sensitivity characterization:** The objective function is linear in $\beta$, so the Pareto frontier between coverage and quality is piecewise linear. Critical values of $\beta$ correspond to breakpoints where the optimal solution changes (basis changes in the LP relaxation).
 
 **Recommended analysis:** Sweep $\beta \in \{0, 0.1, 0.2, \ldots, 1.0\}$ and plot:
+
 - Total RxC coverage vs. $\beta$
 - Number of selected parcels at high-quality sites vs. $\beta$
 - Gini coefficient vs. $\beta$
 
 ### 3.2.2 Gaussian Spread $\sigma$
 
-| Property | Value |
-|----------|-------|
-| Symbol | $\sigma_m$ |
-| Range | $[400, 1200]$ m (adaptive) |
-| Fixed options | 400, 600, 800, 1000, 1200 m |
-| Role | Controls how quickly coverage decays beyond the core radius |
-| Effect | Larger $\sigma$: broader, smoother coverage; smaller $\sigma$: sharper, localized coverage |
+| Property      | Value                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Symbol        | $\sigma_m$                                                                                 |
+| Range         | $[400, 1200]$ m (adaptive)                                                                 |
+| Fixed options | 400, 600, 800, 1000, 1200 m                                                                |
+| Role          | Controls how quickly coverage decays beyond the core radius                                |
+| Effect        | Larger $\sigma$: broader, smoother coverage; smaller $\sigma$: sharper, localized coverage |
 
 **Sensitivity characterization:** The coverage function $\mu_{ij} = \exp(-(d_{ij}-300)^2 / 2\sigma^2)$ is nonlinear in $\sigma$. Increasing $\sigma$ increases coverage for distant demand points but may reduce the marginal value of additional facilities.
 
 **Recommended analysis:** Fix all other parameters, vary $\sigma \in \{400, 600, 800, 1000, 1200\}$, and report:
+
 - Total coverage $\sum C_i$
 - Number of demand points with $C_i > 0.5$
 - Gini coefficient
@@ -1136,25 +1155,25 @@ Parameters are classified into three categories based on their role in the optim
 
 ### 3.2.3 Equity Weight $\alpha$
 
-| Property | Value |
-|----------|-------|
-| Symbol | $\alpha$ |
-| Range | $[0, 1]$ |
-| Default | $0.20$ |
-| Role | Weight of the equity term $\sum W_i$ in the single-stage MILP |
-| Effect | Higher $\alpha$: more emphasis on serving all demand points |
+| Property | Value                                                         |
+| -------- | ------------------------------------------------------------- |
+| Symbol   | $\alpha$                                                      |
+| Range    | $[0, 1]$                                                      |
+| Default  | $0.20$                                                        |
+| Role     | Weight of the equity term $\sum W_i$ in the single-stage MILP |
+| Effect   | Higher $\alpha$: more emphasis on serving all demand points   |
 
 **Interaction with $\beta$:** The single-stage objective $Z = Z_{R \times C} + \beta \cdot Z_q + \alpha \cdot \sum W_i$ involves two competing objectives (coverage vs. equity). The $(\alpha, \beta)$ parameter space defines a 2D trade-off surface.
 
 ### 3.2.4 Truncation Threshold $\varepsilon_{\text{trunc}}$
 
-| Property | Value |
-|----------|-------|
-| Symbol | $\varepsilon_{\text{trunc}}$ |
-| Range | $[0, 1]$ |
-| Default | $0.15$ |
-| Role | Sets fuzzy memberships below this value to zero |
-| Effect | Lower threshold: denser coverage matrix, more candidate connections; higher: sparser, faster solve |
+| Property | Value                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| Symbol   | $\varepsilon_{\text{trunc}}$                                                                       |
+| Range    | $[0, 1]$                                                                                           |
+| Default  | $0.15$                                                                                             |
+| Role     | Sets fuzzy memberships below this value to zero                                                    |
+| Effect   | Lower threshold: denser coverage matrix, more candidate connections; higher: sparser, faster solve |
 
 **Distance correspondence:** The truncation at $\varepsilon_{\text{trunc}} = 0.15$ corresponds to a maximum effective coverage radius of approximately:
 
@@ -1164,13 +1183,13 @@ For $\sigma_m = 800$ m: $d_{\max} \approx 1828$ m.
 
 ### 3.2.5 Coverage Threshold $\tau$
 
-| Property | Value |
-|----------|-------|
-| Symbol | $\tau$ |
-| Range | $[0, 1]$ |
-| Default | $0.50$ |
-| Role | Minimum acceptable neighborhood-level coverage in LSCP |
-| Effect | Higher $\tau$: more containers needed for feasibility |
+| Property | Value                                                  |
+| -------- | ------------------------------------------------------ |
+| Symbol   | $\tau$                                                 |
+| Range    | $[0, 1]$                                               |
+| Default  | $0.50$                                                 |
+| Role     | Minimum acceptable neighborhood-level coverage in LSCP |
+| Effect   | Higher $\tau$: more containers needed for feasibility  |
 
 ## 3.3 Scenario Parameters
 
@@ -1178,11 +1197,11 @@ For $\sigma_m = 800$ m: $d_{\max} \approx 1828$ m.
 
 Three expert-defined weight profiles shift the MCDM emphasis:
 
-| Scenario | $w_{C_1}$ | $w_{C_2}$ | $w_{C_3}$ | $w_{C_4}$ |
-|----------|-----------|-----------|-----------|-----------|
-| Baseline | 0.541 | 0.254 | 0.117 | 0.088 |
-| DamageFocused | 0.609 | 0.223 | 0.109 | 0.059 |
-| InfrastructureFocused | 0.391 | 0.391 | 0.140 | 0.078 |
+| Scenario              | $w_{C_1}$ | $w_{C_2}$ | $w_{C_3}$ | $w_{C_4}$ |
+| --------------------- | --------- | --------- | --------- | --------- |
+| Baseline              | 0.541     | 0.254     | 0.117     | 0.088     |
+| DamageFocused         | 0.609     | 0.223     | 0.109     | 0.059     |
+| InfrastructureFocused | 0.391     | 0.391     | 0.140     | 0.078     |
 
 **Baseline:** Balanced weights reflecting general disaster preparedness priorities.  
 **DamageFocused:** Emphasizes seismic risk — for areas with high geological vulnerability.  
@@ -1239,34 +1258,35 @@ When $Q_i < 1$ (Scenario B), the effective weight $R_i \cdot Q_i$ is reduced. De
 
 #### 1.9.2.5 Q_i Across All Models
 
-| Model | File | Q_i Usage |
-|-------|------|-----------|
-| Main IP | `05_ip.py` | $C_i = Q_i \cdot (\mu_{\text{mev}} + \sum \mu \cdot P \cdot X)$ |
-| LSCP | `08_lscp.py` | Same coverage expression, used in feasibility constraints |
-| Lexicographic | `11_lexicographic.py` | Phase 1: same as Main IP; Phase 2: $C_i \geq t$ with Q_i |
-| ε-Constraint | `13_eps_constraint.py` | $C_i - s_i = \varepsilon$ with Q_i in C_i |
-| Single-Stage | `14_single_stage.py` | $C_i$ with Q_i, plus $W_i$ indicator |
+| Model         | File                   | Q_i Usage                                                       |
+| ------------- | ---------------------- | --------------------------------------------------------------- |
+| Main IP       | `05_ip.py`             | $C_i = Q_i \cdot (\mu_{\text{mev}} + \sum \mu \cdot P \cdot X)$ |
+| LSCP          | `08_lscp.py`           | Same coverage expression, used in feasibility constraints       |
+| Lexicographic | `11_lexicographic.py`  | Phase 1: same as Main IP; Phase 2: $C_i \geq t$ with Q_i        |
+| ε-Constraint  | `13_eps_constraint.py` | $C_i - s_i = \varepsilon$ with Q_i in C_i                       |
+| Single-Stage  | `14_single_stage.py`   | $C_i$ with Q_i, plus $W_i$ indicator                            |
 
 #### 1.9.2.6 Per-Parcel vs. Per-Mahalle Distinction
 
-| Parameter | Scope | Generation | Used As |
-|-----------|-------|------------|---------|
-| $p_i^{\text{access\_road}}$ | Per-parcel | Mahalle base + per-parcel Gaussian noise | Weight $P_j$ inside coverage sum |
-| $p_m^{\text{road\_open}}$ | Per-mahalle | Mahalle base + per-mahalle Gaussian noise | Penalty $Q_i$ scaling entire coverage |
+| Parameter                   | Scope       | Generation                                | Used As                               |
+| --------------------------- | ----------- | ----------------------------------------- | ------------------------------------- |
+| $p_i^{\text{access\_road}}$ | Per-parcel  | Mahalle base + per-parcel Gaussian noise  | Weight $P_j$ inside coverage sum      |
+| $p_m^{\text{road\_open}}$   | Per-mahalle | Mahalle base + per-mahalle Gaussian noise | Penalty $Q_i$ scaling entire coverage |
 
 #### 1.9.2.7 Scenario Comparison Table
 
-| Aspect | Scenario A | Scenario B |
-|--------|------------|------------|
-| $Q_i$ values | All 1.0 | $[0.40, 0.99]$ per mahalle |
-| Coverage penalty | None | Up to 60% reduction |
-| Existing container coverage | Full | Reduced by Q_i |
-| Optimizer behavior | Pure risk-weighted | Biases toward accessible neighborhoods |
-| Result interpretation | Best case (all roads open) | Realistic case (road closure risk) |
+| Aspect                      | Scenario A                 | Scenario B                             |
+| --------------------------- | -------------------------- | -------------------------------------- |
+| $Q_i$ values                | All 1.0                    | $[0.40, 0.99]$ per mahalle             |
+| Coverage penalty            | None                       | Up to 60% reduction                    |
+| Existing container coverage | Full                       | Reduced by Q_i                         |
+| Optimizer behavior          | Pure risk-weighted         | Biases toward accessible neighborhoods |
+| Result interpretation       | Best case (all roads open) | Realistic case (road closure risk)     |
 
 ### 3.3.3 MCDM Method
 
 The system supports four MCDM methods, each producing different risk scores $R_i$:
+
 - TOPSIS (primary, used in optimization)
 - PROMETHEE
 - VIKOR
@@ -1281,6 +1301,7 @@ For parameter $\theta$ with nominal value $\theta_0$:
 $$S_{\theta} = \frac{\partial Z / Z}{\partial \theta / \theta_0} = \frac{\Delta Z / Z_0}{\Delta \theta / \theta_0}$$
 
 **Procedure:**
+
 1. Solve with nominal parameters → $Z_0$
 2. For each parameter $\theta$:
    a. Set $\theta = \theta_0 + \Delta\theta$
@@ -1299,6 +1320,7 @@ $$S_{\theta} = \frac{\partial Z / Z}{\partial \theta / \theta_0} = \frac{\Delta 
 ### 3.4.3 Pareto Front Analysis
 
 The $\varepsilon$-constraint method (Model 13) generates the Pareto frontier between:
+
 - **Objective 1:** Total risk-weighted coverage $\sum R_i C_i$
 - **Objective 2:** Minimum neighborhood coverage $\min_m C_m$
 
@@ -1307,6 +1329,7 @@ The $\varepsilon$-constraint method (Model 13) generates the Pareto frontier bet
 ### 3.4.4 Budget Sensitivity
 
 Vary $K \in \{1, 2, \ldots, 15\}$ and track:
+
 - Marginal coverage gain: $\Delta Z(K) = Z(K) - Z(K-1)$
 - Diminishing returns curve
 - Minimum $K$ for universal coverage (LSCP result)
@@ -1314,13 +1337,13 @@ Vary $K \in \{1, 2, \ldots, 15\}$ and track:
 
 ## 3.5 Cross-Parameter Interaction Matrix
 
-| | $\beta$ | $\sigma$ | $\alpha$ | $\varepsilon_{\text{trunc}}$ | $\tau$ |
-|---|---------|----------|----------|-------------------------------|--------|
-| $\beta$ | — | Weak | Medium | Weak | None |
-| $\sigma$ | Weak | — | Weak | Strong | Medium |
-| $\alpha$ | Medium | Weak | — | Weak | Weak |
-| $\varepsilon_{\text{trunc}}$ | Weak | Strong | Weak | — | Medium |
-| $\tau$ | None | Medium | Weak | Medium | — |
+|                              | $\beta$ | $\sigma$ | $\alpha$ | $\varepsilon_{\text{trunc}}$ | $\tau$ |
+| ---------------------------- | ------- | -------- | -------- | ---------------------------- | ------ |
+| $\beta$                      | —       | Weak     | Medium   | Weak                         | None   |
+| $\sigma$                     | Weak    | —        | Weak     | Strong                       | Medium |
+| $\alpha$                     | Medium  | Weak     | —        | Weak                         | Weak   |
+| $\varepsilon_{\text{trunc}}$ | Weak    | Strong   | Weak     | —                            | Medium |
+| $\tau$                       | None    | Medium   | Weak     | Medium                       | —      |
 
 **Strong interaction ($\sigma$, $\varepsilon_{\text{trunc}}$):** Both control the coverage matrix density. Changing $\sigma$ shifts the distribution of $\mu_{ij}$ values, which directly interacts with the truncation threshold.
 
@@ -1440,27 +1463,27 @@ ReVelle, C. S., Eiselt, H. A., & Daskin, M. S. (2008). A bibliography for some f
 
 # Appendix A: Notation Summary
 
-| Symbol | Type | Description |
-|--------|------|-------------|
-| $I$ | Set | Demand points (140 parcels) |
-| $J$ | Set | Candidate facility sites |
-| $J_F$ | Set | Existing fixed facilities (12) |
-| $M$ | Set | Neighborhoods (17) |
-| $K$ | Parameter | Budget (new containers) |
-| $R_i$ | Parameter | MCDM risk score |
-| $Q_i$ | Parameter | Road accessibility penalty |
-| $P_j$ | Parameter | Population weight |
-| $\mu_{ij}$ | Parameter | Fuzzy coverage membership |
-| $\beta$ | Parameter | Quality weight |
-| $q_j$ | Parameter | Site quality score |
-| $\alpha$ | Parameter | Equity weight |
-| $\sigma_m$ | Parameter | Adaptive Gaussian spread |
-| $\varepsilon_{\text{trunc}}$ | Parameter | Truncation threshold |
-| $\tau$ | Parameter | Coverage threshold |
-| $X_j$ | Variable | Binary placement decision |
-| $C_i$ | Expression | Composite coverage at demand $i$ |
-| $Z$ | Expression | Objective function value |
-| $G$ | Metric | Gini coefficient |
+| Symbol                       | Type       | Description                      |
+| ---------------------------- | ---------- | -------------------------------- |
+| $I$                          | Set        | Demand points (140 parcels)      |
+| $J$                          | Set        | Candidate facility sites         |
+| $J_F$                        | Set        | Existing fixed facilities (12)   |
+| $M$                          | Set        | Neighborhoods (17)               |
+| $K$                          | Parameter  | Budget (new containers)          |
+| $R_i$                        | Parameter  | MCDM risk score                  |
+| $Q_i$                        | Parameter  | Road accessibility penalty       |
+| $P_j$                        | Parameter  | Population weight                |
+| $\mu_{ij}$                   | Parameter  | Fuzzy coverage membership        |
+| $\beta$                      | Parameter  | Quality weight                   |
+| $q_j$                        | Parameter  | Site quality score               |
+| $\alpha$                     | Parameter  | Equity weight                    |
+| $\sigma_m$                   | Parameter  | Adaptive Gaussian spread         |
+| $\varepsilon_{\text{trunc}}$ | Parameter  | Truncation threshold             |
+| $\tau$                       | Parameter  | Coverage threshold               |
+| $X_j$                        | Variable   | Binary placement decision        |
+| $C_i$                        | Expression | Composite coverage at demand $i$ |
+| $Z$                          | Expression | Objective function value         |
+| $G$                          | Metric     | Gini coefficient                 |
 
 ---
 
@@ -1474,8 +1497,8 @@ $$\mathbf{A} = \begin{pmatrix} 1 & 3 & 5 & 7 \\ 1/3 & 1 & 3 & 5 \\ 1/5 & 1/3 & 1
 
 **Step 1: Column sums**
 
-| | Col 1 | Col 2 | Col 3 | Col 4 |
-|---|-------|-------|-------|-------|
+|     | Col 1 | Col 2 | Col 3 | Col 4  |
+| --- | ----- | ----- | ----- | ------ |
 | Sum | 1.676 | 4.533 | 9.333 | 16.000 |
 
 **Step 2: Column normalization**
@@ -1497,6 +1520,7 @@ $$\text{CI} = \frac{4.12 - 4}{4 - 1} = 0.040, \quad \text{CR} = \frac{0.040}{0.9
 ## B.2 Gaussian Coverage Computation
 
 Given:
+
 - Demand point $i$ at coordinates $(40.85, 29.27)$
 - Facility $j$ at coordinates $(40.86, 29.28)$
 - $d_{ij} = 1{,}200$ m (Haversine)
@@ -1512,6 +1536,7 @@ Since $0.531 > \varepsilon_{\text{trunc}} = 0.15$, the membership is kept: $\mu_
 ## B.3 Q_i Effect on Coverage
 
 Given:
+
 - Demand point $i$ in a mahalle with $p_m^{\text{road\_open}} = 0.70$
 - $\mu_{i}^{\text{mev}} = 0.30$ (existing container coverage)
 - One new candidate $j$ with $\mu_{ij} = 0.50$, $P_j = 0.80$

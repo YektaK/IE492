@@ -1,0 +1,23 @@
+{
+    "run_id": "Run_20260609_232256_05ip_K20_Bastan_risk_b0",
+    "timestamp": "20260609_232256",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "risk",
+        "beta": 0.0,
+        "sigma": "Adaptive",
+        "kept_mevcut": [],
+        "fixed_aday": [],
+        "scenario_tag": "Bastan",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b0_K20_t0.15_nomez_risk.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b0_K20_t0.15_nomez_risk.xlsx",
+        "result_file": "results\\models\\summary_all_SA_sgAdaptive_b0_K20_t0.15_nomez_risk.xlsx",
+        "map_file": "Run_20260609_232256_05ip_K20_Bastan_risk_b0_map.html",
+        "chart_file": "Run_20260609_232256_05ip_K20_Bastan_risk_b0_coverage.png"
+    },
+    "stdout": "2026-06-09 23:22:52,647 [INFO] IE492:run_ip_model:52 == 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.0, sigma=Adaptive_0.15, weight=risk, KeptMevcut=0, FixedAday=0) ==\n2026-06-09 23:22:53,295 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:53,350 [INFO] IE492:run_ip_model:183   -> TOPSIS     / Baseline                  / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:53,477 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:53,517 [INFO] IE492:run_ip_model:183   -> TOPSIS     / DamageFocused             / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:53,648 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:53,686 [INFO] IE492:run_ip_model:183   -> TOPSIS     / InfrastructureFocused     / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:53,812 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:53,848 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / Baseline                  / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:54,001 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:54,043 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / DamageFocused             / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:54,174 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:54,210 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / InfrastructureFocused     / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:54,338 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:54,374 [INFO] IE492:run_ip_model:183   -> VIKOR      / Baseline                  / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:54,500 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:54,536 [INFO] IE492:run_ip_model:183   -> VIKOR      / DamageFocused             / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:54,667 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:54,703 [INFO] IE492:run_ip_model:183   -> VIKOR      / InfrastructureFocused     / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:54,832 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:54,872 [INFO] IE492:run_ip_model:183   -> ELECTRE    / Baseline                  / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:55,046 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:55,091 [INFO] IE492:run_ip_model:183   -> ELECTRE    / DamageFocused             / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n2026-06-09 23:22:55,258 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:22:55,311 [INFO] IE492:run_ip_model:183   -> ELECTRE    / InfrastructureFocused     / SA ... Z=31.295, RxC=31.295, min_cov=1.018\n"
+}

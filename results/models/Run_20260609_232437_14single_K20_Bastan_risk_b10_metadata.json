@@ -1,0 +1,23 @@
+{
+    "run_id": "Run_20260609_232437_14single_K20_Bastan_risk_b10",
+    "timestamp": "20260609_232437",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "risk",
+        "beta": 0.1,
+        "sigma": "800",
+        "kept_mevcut": [],
+        "fixed_aday": [],
+        "scenario_tag": "Bastan",
+        "model": "14_single",
+        "model_label": "Single-Stage MILP (Entegre Equity)"
+    },
+    "files": {
+        "ip_file": null,
+        "summary_file": null,
+        "result_file": "results\\single_stage\\single_stage_result_SA_nomez_b10_K20_topsis_baseline.xlsx",
+        "map_file": null,
+        "chart_file": null
+    },
+    "stdout": "2026-06-09 23:24:36,118 [INFO] IE492:main:41 == 14_single_stage.py basladi (senaryo=A, sigma=800, K_Total=20, beta=0.1, weight=risk, mcdm=TOPSIS/Baseline) ==\n2026-06-09 23:24:36,538 [INFO] IE492:main:64   Q_i (A): min=1.000, max=1.000, mean=1.000\n2026-06-09 23:24:36,928 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:24:37,023 [INFO] IE492:main:126   Status: Optimal\n2026-06-09 23:24:37,024 [INFO] IE492:main:130   Secilen: [1, 3, 4, 5, 6, 7, 42, 52, 54, 55, 59, 60, 61, 62, 83, 87, 88, 126, 137, 140]\n2026-06-09 23:24:37,262 [INFO] IE492:main:139   Z = 25.7956  (RxC=22.0240  +  q=0.9716  +  equity=2.8000)\n2026-06-09 23:24:37,499 [INFO] IE492:main:156 \n  Mahalle kapsama (tek-asamali):\n        mahalle    C_i servis_edildi     risk\nABDURRAHMANGAZI 4.7277          EVET 1.000000\n           ADIL 0.5699          EVET 0.098551\n   AHMET YESEVI 1.0031          EVET 0.573913\n    AKSEMSETTIN 1.2754          EVET 0.257971\n     BATTALGAZI 0.7551          EVET 0.533333\n          FATIH 4.6810          EVET 0.492754\n       HAMIDIYE 4.2321          EVET 0.947826\n      HASANPASA 2.0932          EVET 0.437681\n       MECIDIYE 0.9694          EVET 0.449275\n    MEHMET AKIF 5.3096          EVET 0.898551\n    MIMAR SINAN 0.2439         HAYIR 0.113043\n    NECIP FAZIL 0.8610          EVET 0.510145\n      ORHANGAZI 1.9579          EVET 0.565217\n    TURGUT REIS 0.4809          EVET 0.200000\n    YAVUZ SELIM 3.6557          EVET 0.498551\n2026-06-09 23:24:37,541 [INFO] IE492:main:183 \n  -> D:\\IE492\\results\\single_stage\\single_stage_result_SA_nomez_b10_K20_topsis_baseline.xlsx\n2026-06-09 23:24:37,541 [INFO] IE492:main:184 == 14_single_stage.py tamamlandi ==\n"
+}

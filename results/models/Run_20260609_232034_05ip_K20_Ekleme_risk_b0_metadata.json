@@ -1,0 +1,36 @@
+{
+    "run_id": "Run_20260609_232034_05ip_K20_Ekleme_risk_b0",
+    "timestamp": "20260609_232034",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "risk",
+        "beta": 0.0,
+        "sigma": "Adaptive",
+        "kept_mevcut": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+        ],
+        "fixed_aday": [],
+        "scenario_tag": "Ekleme",
+        "model": "05_ip",
+        "model_label": "Ana IP Modeli (12 MCDM Varyantı)"
+    },
+    "files": {
+        "ip_file": "ip_v1_SA_TOPSIS_Baseline_SA_sgAdaptive_b0_K20_t0.15_risk.xlsx",
+        "summary_file": "summary_all_SA_sgAdaptive_b0_K20_t0.15_risk.xlsx",
+        "result_file": "results\\models\\summary_all_SA_sgAdaptive_b0_K20_t0.15_risk.xlsx",
+        "map_file": "Run_20260609_232034_05ip_K20_Ekleme_risk_b0_map.html",
+        "chart_file": "Run_20260609_232034_05ip_K20_Ekleme_risk_b0_coverage.png"
+    },
+    "stdout": "2026-06-09 23:20:31,013 [INFO] IE492:run_ip_model:52 == 05_ip.py basladi (senaryo=A, K_Total=20, beta=0.0, sigma=Adaptive_0.15, weight=risk, KeptMevcut=12, FixedAday=0) ==\n2026-06-09 23:20:31,598 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:31,652 [INFO] IE492:run_ip_model:183   -> TOPSIS     / Baseline                  / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:31,769 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:31,804 [INFO] IE492:run_ip_model:183   -> TOPSIS     / DamageFocused             / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:31,924 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:31,959 [INFO] IE492:run_ip_model:183   -> TOPSIS     / InfrastructureFocused     / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:32,081 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:32,116 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / Baseline                  / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:32,234 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:32,269 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / DamageFocused             / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:32,390 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:32,426 [INFO] IE492:run_ip_model:183   -> PROMETHEE  / InfrastructureFocused     / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:32,553 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:32,588 [INFO] IE492:run_ip_model:183   -> VIKOR      / Baseline                  / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:32,705 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:32,740 [INFO] IE492:run_ip_model:183   -> VIKOR      / DamageFocused             / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:32,857 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:32,892 [INFO] IE492:run_ip_model:183   -> VIKOR      / InfrastructureFocused     / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:33,018 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:33,053 [INFO] IE492:run_ip_model:183   -> ELECTRE    / Baseline                  / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:33,172 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:33,207 [INFO] IE492:run_ip_model:183   -> ELECTRE    / DamageFocused             / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n2026-06-09 23:20:33,328 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:20:33,365 [INFO] IE492:run_ip_model:183   -> ELECTRE    / InfrastructureFocused     / SA ... Z=31.814, RxC=31.814, min_cov=0.995\n"
+}

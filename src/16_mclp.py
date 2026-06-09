@@ -131,6 +131,23 @@ def run_mclp(S=800, K_TOTAL=20, weight_type="population", KEPT_MEVCUT=None, FIXE
         "Kapsandi_mi": [1 if i in covered_idx else 0 for i in range(n_mah)]
     })
     mahalle_sonuclar.to_excel(RESULTS_DIR / f"{vname}_mahalleler.xlsx", index=False)
+
+    # Write summary result file compatible with app.py single-result display
+    secilen_ids = [int(adaylar.iloc[j]['S_No']) for j in selected_idx]
+    kapsanan_risk = float(obj_val)
+    kapsanan_mahalle = len(covered_idx)
+    result_data = pd.DataFrame([{
+        "Z": kapsanan_risk,
+        "RxC": kapsanan_risk,
+        "min_mahalle_cov": kapsanan_mahalle / n_mah,
+        "avg_mahalle_cov": kapsanan_mahalle / n_mah,
+        "n_mahalle_servis": kapsanan_mahalle,
+        "secilen": ",".join(str(s) for s in secilen_ids)
+    }])
+    cov_out = mahalle_sonuclar.rename(columns={"Talep": "talep", "Kapsandi_mi": "toplam_kapsama"})
+    with pd.ExcelWriter(RESULTS_DIR / f"{vname}_result.xlsx") as writer:
+        result_data.to_excel(writer, sheet_name="Ozet", index=False)
+        cov_out.to_excel(writer, sheet_name="Mahalle_Kapsama", index=False)
     logger.info(f"Sonuclar '{vname}' önekiyle kaydedildi.\n")
 
 if __name__ == "__main__":

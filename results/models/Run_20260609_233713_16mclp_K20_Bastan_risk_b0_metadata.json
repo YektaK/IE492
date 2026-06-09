@@ -1,0 +1,23 @@
+{
+    "run_id": "Run_20260609_233713_16mclp_K20_Bastan_risk_b0",
+    "timestamp": "20260609_233713",
+    "parameters": {
+        "k_total": 20,
+        "weight_type": "risk",
+        "beta": 0.0,
+        "sigma": "800",
+        "kept_mevcut": [],
+        "fixed_aday": [],
+        "scenario_tag": "Bastan",
+        "model": "16_mclp",
+        "model_label": "MCLP Benchmark (Klasik Kapsama)"
+    },
+    "files": {
+        "ip_file": null,
+        "summary_file": null,
+        "result_file": "results\\models\\MCLP_K20_S800_risk_nomez_secilenler.xlsx",
+        "map_file": null,
+        "chart_file": null
+    },
+    "stdout": "2026-06-09 23:37:12,877 [INFO] IE492:run_mclp:31 --- MCLP Benchmark Basliyor ---\n2026-06-09 23:37:12,877 [INFO] IE492:run_mclp:32 Parametreler: K_Total=20, S=800m, Agirlik=risk, KeptMevcut=0, FixedAday=0\n2026-06-09 23:37:13,518 [INFO] IE492:get_solver:18 HiGHS cozucusu secildi (timeLimit=30s, msg=0).\n2026-06-09 23:37:13,610 [INFO] IE492:run_mclp:116 Cozum Durumu: Optimal (0.22 sn)\n2026-06-09 23:37:13,611 [INFO] IE492:run_mclp:117 Maksimum Kapsanan Risk: 8 / 8 (%100.0)\n2026-06-09 23:37:13,611 [INFO] IE492:run_mclp:118 Kapsanan Mahalle Sayisi: 15 / 15\n2026-06-09 23:37:13,618 [INFO] IE492:run_mclp:119 Secilen Aday ID'leri: [1, 6, 10, 28, 30, 31, 57, 63, 70, 85, 86, 87, 100, 114, 115, 116, 118, 119, 136, 138]\n2026-06-09 23:37:13,683 [INFO] IE492:run_mclp:134 Sonuclar 'MCLP_K20_S800_risk_nomez' Ã¶nekiyle kaydedildi.\n\n"
+}

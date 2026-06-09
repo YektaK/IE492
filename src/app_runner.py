@@ -156,12 +156,16 @@ def find_solver_outputs(
         result = results_dir / "eps_constraint" / f"pareto_results_{pareto_file_suffix(job)}.xlsx"
     elif model_key == "14_single":
         result = results_dir / "single_stage" / f"single_stage_result_{equity_file_suffix(job)}.xlsx"
+        outputs["summary"] = latest_match(models_dir, f"summary_all_*{ip_file_suffix(job)}*")
+        outputs["ip"] = latest_match(models_dir, f"ip_*{ip_file_suffix(job)}*")
+        outputs["result"] = result if result and result.exists() else None
+        return outputs
     elif model_key == "16_mclp":
         nm_str = "_nomez" if not job.get("kept_mevcut") else ""
-        result = (
-            models_dir
-            / f"MCLP_K{int(job['k_total'])}_S{mclp_radius(job)}_{job.get('weight_type', 'population')}{nm_str}_secilenler.xlsx"
-        )
+        prefix = f"MCLP_K{int(job['k_total'])}_S{mclp_radius(job)}_{job.get('weight_type', 'population')}{nm_str}"
+        result_new = models_dir / f"{prefix}_result.xlsx"
+        result_old = models_dir / f"{prefix}_secilenler.xlsx"
+        result = result_new if result_new.exists() else result_old
     else:
         result = None
 
