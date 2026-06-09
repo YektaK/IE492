@@ -7,6 +7,7 @@ Streamlit dashboard ve raporlama scriptleri tarafından ortak kullanılır.
 """
 
 import json
+import functools
 import folium
 import pandas as pd
 import numpy as np
@@ -21,6 +22,16 @@ try:
 except ValueError:
     plt.style.use("seaborn-whitegrid")
 sns.set_context("paper", font_scale=1.2)
+
+
+@functools.lru_cache(maxsize=1)
+def _load_geojson() -> dict | None:
+    """Load and cache the Sultanbeyli neighbourhood GeoJSON (static file)."""
+    geojson_path = Path(__file__).resolve().parent.parent / "data" / "processed" / "sultanbeyli_mahalleler_clean.geojson"
+    if not geojson_path.exists():
+        return None
+    with open(geojson_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 def get_color(val: float) -> str:
     """Kapsama seviyesine göre kırmızıdan yeşile renk gradyanı döndürür (0.50 hedef eşik)."""
@@ -54,10 +65,10 @@ def plot_solution_map(selected_df: pd.DataFrame,
     
     # 0. Mahalle Sınırları ve Kapsama Isı Haritası (Choropleth)
     if cov_df is not None and not cov_df.empty:
-        geojson_path = Path(__file__).resolve().parent.parent / "data" / "processed" / "sultanbeyli_mahalleler_clean.geojson"
-        if geojson_path.exists():
-            with open(geojson_path, "r", encoding="utf-8") as f:
-                geojson_data = json.load(f)
+        geojson_data = _load_geojson()
+        if geojson_data is not None:
+            import copy
+            geojson_data = copy.deepcopy(geojson_data)
             
             # Kapsama değerlerini haritala
             cov_df_copy = cov_df.copy()
@@ -274,3 +285,14 @@ def plot_lorenz_curve(values: np.ndarray,
     plt.savefig(str(out_p), dpi=300, bbox_inches='tight')
     plt.close()
     return gini_coef
+
+
+def compute_gini(values: np.ndarray) -> float:
+    """Compute Gini coefficient without generating a plot."""
+    vals = np.sort(values)
+    n = len(vals)
+    if n == 0 or np.sum(vals) == 0:
+        return 0.0
+    sum_diffs = np.sum(np.abs(vals[:, None] - vals[None, :]))
+    denom = 2 * n * np.sum(vals)
+    return float(sum_diffs / denom) if denom > 0 else 0.0

@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import folium
+import plotly.graph_objects as go
+import plotly.express as px
+import matplotlib.pyplot as plt
 from pathlib import Path
 import sys
 import subprocess
@@ -325,7 +328,7 @@ def _poll_bg_single():
         return bg
     elapsed = time.time() - bg["start"]
     st.info(f"⏳ Model çözülüyor... ({elapsed:.0f}s geçti)")
-    time.sleep(1)
+    time.sleep(2)
     st.rerun()
     return None
 
@@ -345,7 +348,7 @@ def _poll_bg_queue():
         st.info(f"⏳ İşleniyor: {c['current']}/{c['total']} ({elapsed:.0f}s) — {c.get('current_label', '')}")
     else:
         st.info(f"⏳ Hazırlanıyor... ({elapsed:.0f}s)")
-    time.sleep(1)
+    time.sleep(2)
     st.rerun()
     return None
 
@@ -607,6 +610,85 @@ def translate_scenario(tag):
         return "Tümünü Sıfırdan Yerleştir (Serbest)"
     return tag
 
+@st.cache_data(ttl=30)
+def _load_all_metadata():
+    """Load all solver run metadata. Short TTL since new runs can appear."""
+    meta_files = sorted(MODELS_DIR.glob("*_metadata.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+    if not meta_files:
+        return pd.DataFrame(), {}
+    records = []
+    raw = {}
+    for mf in meta_files:
+        with open(mf, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        p = data["parameters"]
+        label = (f"{p.get('model_label', 'IP')} | K={p['k_total']} | {weight_label(p['weight_type'])} | "
+                 f"β={p['beta']} | {p.get('scenario_tag','?')} | {data['timestamp']}")
+        records.append({
+            "Etiket": label,
+            "Run_ID": data["run_id"],
+            "Tarih": data["timestamp"],
+            "Model": p.get("model_label", "Ana IP"),
+            "Toplam Konteyner Sayısı": p["k_total"],
+            "Hedef": weight_label(p["weight_type"]),
+            "Beta": p["beta"],
+            "Sigma": p["sigma"],
+            "Korunan Mevcut Konteyner Sayısı": len(p["kept_mevcut"]),
+            "Zorunlu Yeni Aday Lokasyon Sayısı": len(p.get("fixed_aday", [])),
+            "Senaryo": translate_scenario(p.get("scenario_tag", "?"))
+        })
+        raw[data["run_id"]] = data
+    return pd.DataFrame(records), raw
+
+@st.cache_data(ttl=3600)
+def _merge_coverage_weights(cov_path_str: str, weight_type: str):
+    """Merge coverage data with the appropriate weight DataFrame.
+    Returns (merged_df, val_col) or (empty_df, None) on failure.
+    """
+    cov_p = Path(cov_path_str)
+    if not cov_p.exists():
+        return pd.DataFrame(), None
+    cov_df = pd.read_excel(cov_p)
+    return _do_merge_coverage(cov_df, weight_type)
+
+def _do_merge_coverage(cov_df: pd.DataFrame, weight_type: str):
+    """Merge a coverage DataFrame with weight data. Returns (merged, val_col)."""
+    if cov_df.empty:
+        return pd.DataFrame(), None
+    weight_map = {
+        "population": (DATA_DIR / "mahalle_nufus.xlsx", "nufus_2024"),
+        "shelter":    (DATA_DIR / "mahalle_barinma.xlsx", "hane_ihtiyaci"),
+    }
+    w_path, val_col = weight_map.get(weight_type, (DATA_DIR / "mahalle_risk.xlsx", "risk_score"))
+    w_df = pd.read_excel(w_path)
+    w_df["mahalle_norm"] = w_df["mahalle"].apply(norm_mahalle)
+    cov_df = cov_df.copy()
+    cov_df["mahalle_norm"] = cov_df["mahalle"].apply(norm_mahalle)
+    merged = pd.merge(cov_df, w_df, on="mahalle_norm", how="left", suffixes=("", "_w"))
+    return merged, val_col
+
+@st.cache_data(ttl=3600)
+def _prepare_map_data(ip_path_str: str, kept_mevcut_tuple: tuple, fixed_aday_tuple: tuple):
+    """Prepare DataFrames for map rendering. Returns dict with yeni_df, kept_df, removed_df, fixed_df."""
+    ip_p = Path(ip_path_str)
+    if not ip_p.exists():
+        return None
+    mevcut_full = pd.read_excel(DATA_DIR / "mevcut_12.xlsx")
+    yeni_df = pd.read_excel(ip_p)
+    if kept_mevcut_tuple:
+        kept_df = mevcut_full.iloc[list(kept_mevcut_tuple)].copy()
+        all_idx = set(range(len(mevcut_full)))
+        removed_idx = all_idx - set(kept_mevcut_tuple)
+        removed_df = mevcut_full.iloc[list(removed_idx)].copy() if removed_idx else pd.DataFrame()
+    else:
+        kept_df = pd.DataFrame()
+        removed_df = mevcut_full.copy()
+    if fixed_aday_tuple and "S_No" in yeni_df.columns:
+        fixed_df = yeni_df[yeni_df["S_No"].isin(list(fixed_aday_tuple))].copy()
+    else:
+        fixed_df = pd.DataFrame()
+    return {"yeni_df": yeni_df, "kept_df": kept_df, "removed_df": removed_df, "fixed_df": fixed_df}
+
 # ==========================================
 # TAB 3: ÇÖZÜM DETAYLARI
 # ==========================================
@@ -614,36 +696,11 @@ with tab_results:
     st.header("🔍 Çözüm Detayları")
     st.markdown("Çözülmüş optimizasyon modellerini listeleyin, filtreleyin ve seçilen modelin parsel detaylarını, haritasını ve kapsama analizini inceleyin.")
     
-    meta_files = sorted(MODELS_DIR.glob("*_metadata.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+    df_meta, meta_raw = _load_all_metadata()
     
-    if not meta_files:
+    if df_meta.empty:
         st.info("📭 Henüz çalıştırılmış sonuç bulunamadı. Deney Tasarımı sekmesinden bir model çalıştırın.")
     else:
-        meta_records = []
-        meta_raw = {}
-        for mf in meta_files:
-            with open(mf, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            p = data["parameters"]
-            label = (f"{p.get('model_label', 'IP')} | K={p['k_total']} | {weight_label(p['weight_type'])} | "
-                     f"β={p['beta']} | {p.get('scenario_tag','?')} | {data['timestamp']}")
-            meta_records.append({
-                "Etiket": label,
-                "Run_ID": data["run_id"],
-                "Tarih": data["timestamp"],
-                "Model": p.get("model_label", "Ana IP"),
-                "Toplam Konteyner Sayısı": p["k_total"],
-                "Hedef": weight_label(p["weight_type"]),
-                "Beta": p["beta"],
-                "Sigma": p["sigma"],
-                "Korunan Mevcut Konteyner Sayısı": len(p["kept_mevcut"]),
-                "Zorunlu Yeni Aday Lokasyon Sayısı": len(p.get("fixed_aday", [])),
-                "Senaryo": translate_scenario(p.get("scenario_tag", "?"))
-            })
-            meta_raw[data["run_id"]] = data
-                
-        df_meta = pd.DataFrame(meta_records)
-        
         # Filtreleme Seçenekleri
         with st.expander("🔍 Tabloyu Filtrele", expanded=False):
             col_f1, col_f2, col_f3 = st.columns(3)
@@ -708,6 +765,7 @@ with tab_results:
             # MCDM Skor Tablosunu yükle
             df_sum = pd.DataFrame()
             vname, mcdm_sel, scen_sel = None, None, None  # Initialize before if block
+            single_result_path = None
             if files.get("summary_file"):
                 sum_path = MODELS_DIR / files["summary_file"]
                 if sum_path.exists():
@@ -715,6 +773,12 @@ with tab_results:
                         df_sum = pd.read_excel(sum_path)
                     except Exception as e:
                         st.warning(f"Özet dosyası okunurken hata: {e}")
+            
+            if df_sum.empty and files.get("result_file"):
+                # Single-result model (14_single, 11_lex, 13_eps, 16_mclp)
+                result_rel = files["result_file"]
+                if result_rel:
+                    single_result_path = PROJECT_ROOT / result_rel
             
             if not df_sum.empty:
                 st.markdown("#### 📊 Model / Karar Varyantı Seçimi")
@@ -783,9 +847,10 @@ with tab_results:
                 variant_paths = variant_output_paths(params, MODELS_DIR, vname, mcdm_sel, scen_sel)
                 ip_path = variant_paths["ip"]
                 cov_path = variant_paths["coverage"]
-                
+
+                # ---- Map & Charts (inside variant branch) ----
                 col_left, col_right = st.columns([1, 2])
-                
+
                 with col_left:
                     st.markdown(f"#### 📍 Seçilen Konteyner Lokasyonları ({selected_combo})")
                     if ip_path.exists():
@@ -794,43 +859,30 @@ with tab_results:
                         st.dataframe(df_ip[show_cols] if show_cols else df_ip, use_container_width=True, hide_index=True)
                     else:
                         st.warning("Seçilen varyanta ait Excel lokasyon dosyası bulunamadı.")
-                        
+
                 with col_right:
                     st.markdown(f"#### 🗺️ İnteraktif Çözüm Haritası ({selected_combo})")
                     if ip_path.exists():
                         from visualization import plot_solution_map
-                        mevcut_full = pd.read_excel(DATA_DIR / "mevcut_12.xlsx")
-                        yeni_df = pd.read_excel(ip_path)
-                        
-                        # Kept / Removed mantığı
-                        if params["kept_mevcut"]:
-                            kept_df = mevcut_full.iloc[params["kept_mevcut"]].copy()
-                            all_idx = set(range(len(mevcut_full)))
-                            removed_idx = all_idx - set(params["kept_mevcut"])
-                            removed_df = mevcut_full.iloc[list(removed_idx)].copy() if removed_idx else pd.DataFrame()
-                        else:
-                            kept_df = pd.DataFrame()
-                            removed_df = mevcut_full.copy()
-                            
-                        fixed_aday_list = params.get("fixed_aday", [])
-                        if fixed_aday_list and "S_No" in yeni_df.columns:
-                            fixed_df = yeni_df[yeni_df["S_No"].isin(fixed_aday_list)].copy()
-                        else:
-                            fixed_df = pd.DataFrame()
-                        
+                        map_data = _prepare_map_data(str(ip_path), tuple(params.get("kept_mevcut", [])), tuple(params.get("fixed_aday", [])))
+                        yeni_df = map_data["yeni_df"]
+                        kept_df = map_data["kept_df"]
+                        removed_df = map_data["removed_df"]
+                        fixed_df = map_data["fixed_df"]
+
                         temp_map_path = RESULTS_DIR / "temp_detail_map.html"
-                        
+
                         cov_df_detail = None
                         if cov_path.exists():
                             cov_df_detail = pd.read_excel(cov_path)
-                            
+
                         plot_solution_map(
                             yeni_df, kept_df, removed_df, fixed_df, temp_map_path,
                             title=f"K={params['k_total']} | {selected_combo} | {translate_scenario(params.get('scenario_tag','?'))}",
                             cov_df=cov_df_detail,
                             sigma=get_sigma_radius(params.get("sigma", 800))
                         )
-                        
+
                         if temp_map_path.exists():
                             with open(temp_map_path, "r", encoding="utf-8") as f:
                                 html_data = f.read()
@@ -838,69 +890,44 @@ with tab_results:
                             components.html(html_data, height=500, scrolling=True)
                     else:
                         st.warning("Çözüm haritası çizilemedi (Dosya eksik).")
-                        
-                # Kapsama Grafiği ve Lorenz Eğrisi
-                if cov_path.exists() and ip_path.exists():
-                    st.markdown(f"#### 📈 Kapsama ve Eşitlik Analizi ({selected_combo})")
-                    from visualization import plot_coverage_bar, plot_lorenz_curve
-                    cov_df = pd.read_excel(cov_path)
-                    
-                    if params['weight_type'] == "population":
-                        w_df = pd.read_excel(DATA_DIR / "mahalle_nufus.xlsx")
-                        val_col = "nufus_2024"
-                    elif params['weight_type'] == "shelter":
-                        w_df = pd.read_excel(DATA_DIR / "mahalle_barinma.xlsx")
-                        val_col = "hane_ihtiyaci"
-                    else:
-                        w_df = pd.read_excel(DATA_DIR / "mahalle_risk.xlsx")
-                        val_col = "risk_score"
-                        
-                    w_df["mahalle_norm"] = w_df["mahalle"].apply(norm_mahalle)
-                    cov_df["mahalle_norm"] = cov_df["mahalle"].apply(norm_mahalle)
-                    merged = pd.merge(cov_df, w_df, on="mahalle_norm", how="left", suffixes=("", "_w"))
-                    
-                    max_val = merged[val_col].max()
-                    target_vals = merged[val_col] / (max_val + 1e-9)
-                    
-                    col_chart1, col_chart2 = st.columns(2)
-                    
-                    with col_chart1:
-                        st.markdown("##### 📊 Mahalle Kapsama vs İhtiyaç Seviyesi")
-                        temp_chart_path = RESULTS_DIR / "temp_detail_chart.png"
-                        plot_coverage_bar(
-                            merged["mahalle"], merged["toplam_kapsama"], target_vals,
-                            weight_label(params['weight_type']), temp_chart_path,
-                            title=f"Kapsama vs {weight_label(params['weight_type'])} ({selected_combo})"
-                        )
-                        if temp_chart_path.exists():
-                            st.image(str(temp_chart_path), use_container_width=True)
-                            
-                    with col_chart2:
-                        st.markdown("##### 📈 Lorenz Eğrisi (Kapsama Dağılımı Adaleti)")
-                        temp_lorenz_path = RESULTS_DIR / "temp_lorenz_chart.png"
-                        
-                        # Orman alanlarını Gini hesabını bozmaması için çıkar
-                        non_forest_df = merged[~merged["mahalle_norm"].isin(["SALGAMLI DEVLET ORMANI", "TEFERRUC TEPE ORMANI"])]
-                        
-                        # Önce Gini katsayısını hesaplamak için bir kerelik çiz
-                        g_coef = plot_lorenz_curve(
-                            non_forest_df["toplam_kapsama"].values, temp_lorenz_path,
-                            title="Lorenz Eğrisi"
-                        )
-                        # Başlığa Gini'yi yazarak tekrar çiz
-                        plot_lorenz_curve(
-                            non_forest_df["toplam_kapsama"].values, temp_lorenz_path,
-                            title=f"Lorenz Eğrisi (Gini: {g_coef:.3f})"
-                        )
-                        
-                        if temp_lorenz_path.exists():
-                            st.image(str(temp_lorenz_path), use_container_width=True)
-                            
-                # Radar Grafiği Karşılaştırması
+
+                    # Coverage chart + Lorenz
+                    if cov_path.exists() and ip_path.exists():
+                        st.markdown(f"#### 📈 Kapsama ve Eşitlik Analizi ({selected_combo})")
+                        from visualization import plot_coverage_bar, plot_lorenz_curve, compute_gini
+                        merged, val_col = _merge_coverage_weights(str(cov_path), params['weight_type'])
+
+                        max_val = merged[val_col].max()
+                        target_vals = merged[val_col] / (max_val + 1e-9)
+
+                        col_chart1, col_chart2 = st.columns(2)
+
+                        with col_chart1:
+                            temp_chart_path = RESULTS_DIR / "temp_detail_chart.png"
+                            plot_coverage_bar(
+                                merged["mahalle"], merged["toplam_kapsama"], target_vals,
+                                weight_label(params['weight_type']), temp_chart_path,
+                                title=f"Kapsama vs {weight_label(params['weight_type'])} ({selected_combo})"
+                            )
+                            if temp_chart_path.exists():
+                                st.image(str(temp_chart_path), use_container_width=True)
+
+                        with col_chart2:
+                            temp_lorenz_path = RESULTS_DIR / "temp_lorenz_chart.png"
+                            non_forest_df = merged[~merged["mahalle_norm"].isin(["SALGAMLI DEVLET ORMANI", "TEFERRUC TEPE ORMANI"])]
+                            g_coef = compute_gini(non_forest_df["toplam_kapsama"].values)
+                            plot_lorenz_curve(
+                                non_forest_df["toplam_kapsama"].values, temp_lorenz_path,
+                                title=f"Lorenz Eğrisi (Gini: {g_coef:.3f})"
+                            )
+                            if temp_lorenz_path.exists():
+                                st.image(str(temp_lorenz_path), use_container_width=True)
+
+                # Radar chart
                 st.markdown("---")
                 st.markdown("#### 🕸️ Karar Varyasyonları Radar Karşılaştırması")
                 st.markdown("Farklı MCDM/ağırlık varyasyonlarının güçlü/zayıf yönlerini kıyaslamak için en fazla 3 tanesini seçin:")
-                
+
                 radar_selections = st.multiselect(
                     "Karşılaştırılacak varyasyonları seçin:",
                     options=combo_options,
@@ -908,23 +935,20 @@ with tab_results:
                     max_selections=3,
                     key="radar_variant_select"
                 )
-                
+
                 if radar_selections:
-
-
-
                     fig_radar = go.Figure()
                     categories = ['Amaç Değeri (Z)', 'Toplam Fayda (RxC)', 'Min Kapsama (Eşitlik)', 'Ortalama Kapsama', 'Adalet Seviyesi (1-Gini)']
-                    
+
                     for combo in radar_selections:
                         c_idx = combo_options.index(combo)
                         c_row = df_sum.iloc[c_idx]
-                        
+
                         v_vname = c_row["version"]
                         v_mcdm = c_row["mcdm"]
                         v_scen = c_row["senaryo"]
                         v_cov_path = variant_output_paths(params, MODELS_DIR, v_vname, v_mcdm, v_scen)["coverage"]
-                        
+
                         v_gini = 0.0
                         if v_cov_path.exists():
                             v_cov_df = pd.read_excel(v_cov_path)
@@ -936,17 +960,17 @@ with tab_results:
                                 v_sum_diffs = np.sum(np.abs(v_vals[:, None] - v_vals[None, :]))
                                 v_denom = 2 * v_n * np.sum(v_vals)
                                 v_gini = v_sum_diffs / v_denom if v_denom > 0 else 0.0
-                        
+
                         z_val = c_row.get('Z_total', 0.0)
                         rxc_val = c_row.get('RxC', 0.0)
                         min_cov = c_row.get('min_mahalle_cov', 0.0)
                         avg_cov = c_row.get('avg_mahalle_cov', 0.0)
                         equality_val = 1.0 - v_gini
-                        
+
                         r_values = [z_val, rxc_val, min_cov, avg_cov, equality_val]
                         r_values.append(r_values[0])
                         categories_closed = categories + [categories[0]]
-                        
+
                         fig_radar.add_trace(go.Scatterpolar(
                             r=r_values,
                             theta=categories_closed,
@@ -954,153 +978,138 @@ with tab_results:
                             name=combo,
                             opacity=0.4
                         ))
-                        
+
                     fig_radar.update_layout(
-                        polar=dict(
-                            radialaxis=dict(
-                                visible=True,
-                                range=[0, 1.1]
-                            )
-                        ),
+                        polar=dict(radialaxis=dict(visible=True, range=[0, 1.1])),
                         showlegend=True,
                         title="MCDM Karar Varyasyonları Karşılaştırma Analizi",
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)"
                     )
                     st.plotly_chart(fig_radar, use_container_width=True)
-            else:
-                st.warning("Bu optimizasyon koşumu için varyant summary tablosu yüklenemedi.")
-            
-            # Epsilon Constraint model ise Pareto Cephesi Görselleştirmesi ekle
-            if params.get("model") == "13_eps":
-                st.markdown("---")
-                st.markdown("### 🏆 Pareto Cephesi Görselleştirmesi (Trade-off Analizi)")
-                
-                k_total = params["k_total"]
-                weight_type = params["weight_type"]
-                pareto_file = RESULTS_DIR / "eps_constraint" / f"pareto_results_{pareto_file_suffix(params)}.xlsx"
-                legacy_pareto_file = RESULTS_DIR / "eps_constraint" / f"pareto_results_K{k_total}_{weight_type}.xlsx"
-                if not pareto_file.exists() and legacy_pareto_file.exists():
-                    pareto_file = legacy_pareto_file
-                
-                if pareto_file.exists():
-                    df_pareto = pd.read_excel(pareto_file)
-                    df_pareto_opt = df_pareto[df_pareto["status"] == "Optimal"].drop_duplicates(subset=["RxC", "actual_min_cov"])
-                    
-                    if not df_pareto_opt.empty:
-                        if "avg_cov" in df_pareto_opt.columns:
-                            fig_pareto = px.scatter_3d(
-                                df_pareto_opt,
-                                x="actual_min_cov",
-                                y="RxC",
-                                z="avg_cov",
-                                color="RxC",
-                                labels={
-                                    "actual_min_cov": "Min Kapsama (Eşitlik)",
-                                    "RxC": "Toplam Risk×Kapsama (Verimlilik)",
-                                    "avg_cov": "Ortalama Kapsama (Genel Hizmet)"
-                                },
-                                title="3D Pareto Cephesi: Sosyal Eşitlik vs. Verimlilik vs. Ortalama Hizmet Seviyesi"
-                            )
-                            fig_pareto.update_traces(marker=dict(size=6, symbol='circle'))
-                        else:
-                            fig_pareto = px.scatter(
-                                df_pareto_opt,
-                                x="actual_min_cov",
-                                y="RxC",
-                                color="RxC",
-                                labels={
-                                    "actual_min_cov": "Minimum Mahalle Kapsaması (Eşitlik)",
-                                    "RxC": "Toplam Risk×Kapsama Skoru (Verimlilik)"
-                                },
-                                title="2D Pareto Cephesi: Sosyal Eşitlik vs. Verimlilik"
-                            )
-                            fig_pareto.update_traces(mode='lines+markers', marker=dict(size=10))
-                        
-                        st.plotly_chart(fig_pareto, use_container_width=True)
-                        
-                        show_pareto_cols = ["eps_target", "RxC", "actual_min_cov"]
-                        if "avg_cov" in df_pareto_opt.columns:
-                            show_pareto_cols.append("avg_cov")
-                        st.dataframe(df_pareto_opt[show_pareto_cols], use_container_width=True, hide_index=True)
-                    else:
-                        st.warning("Pareto Excel dosyasında çözülmüş optimal nokta bulunamadı.")
-                else:
-                    st.info(f"Pareto sonuç Excel dosyası bulunamadı: `{pareto_file.name}`.")
-            
-            # PDF Rapor Butonu
-            st.markdown("---")
-            st.markdown("### 📥 PDF Çözüm Raporu")
-            pdf_path = RESULTS_DIR / f"{selected_id}_report.pdf"
-            
-            col_pdf1, col_pdf2 = st.columns(2)
-            with col_pdf1:
-                if st.button("📄 PDF Raporu Oluştur / Güncelle"):
-                    with st.spinner("PDF oluşturuluyor..."):
-                        cmd_pdf = [
-                            sys.executable,
-                            str(PROJECT_ROOT / "src" / "report_generator.py"),
-                            str(MODELS_DIR / f"{selected_id}_metadata.json"),
-                            str(pdf_path)
-                        ]
-                        res_pdf = subprocess.run(cmd_pdf, capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=120)
-                        if res_pdf.returncode == 0:
-                            st.success("✅ PDF raporu başarıyla oluşturuldu!")
-                        else:
-                            st.error("PDF oluşturulurken hata!")
-                            st.code(res_pdf.stderr)
-            with col_pdf2:
-                if pdf_path.exists():
-                    with open(pdf_path, "rb") as f:
-                        pdf_data = f.read()
-                    st.download_button(
-                        label="📥 PDF Raporunu İndir",
-                        data=pdf_data,
-                        file_name=f"{selected_id}_report.pdf",
-                        mime="application/pdf"
-                    )
 
-            # Excel Rapor Butonu (yalnızca varyant seçildiyse göster)
-            if vname is not None and mcdm_sel is not None and scen_sel is not None:
-                st.markdown("---")
-                st.markdown("### 📥 Excel Çözüm Raporu (Çok Sayfalı)")
-                excel_path = RESULTS_DIR / f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx"
-                
-                col_xls1, col_xls2 = st.columns(2)
-                with col_xls1:
-                    if st.button("📊 Excel Raporu Oluştur / Güncelle"):
-                        with st.spinner("Excel oluşturuluyor..."):
-                            try:
-                                from excel_report_generator import generate_excel_report
-                                generate_excel_report(
-                                    MODELS_DIR / f"{selected_id}_metadata.json",
-                                    excel_path,
-                                    vname,
-                                    mcdm_sel,
-                                    scen_sel
-                                )
-                                _set_notification("Excel raporu başarıyla oluşturuldu!")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Excel oluşturulurken hata: {e}")
-                with col_xls2:
-                    if excel_path.exists():
-                        with open(excel_path, "rb") as f:
-                            xls_data = f.read()
-                        st.download_button(
-                            label="📥 Excel Raporunu İndir",
-                            data=xls_data,
-                            file_name=f"{selected_id}_{vname}_{mcdm_sel}_{scen_sel}_report.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            elif single_result_path:
+                # --- Single-result model fallback (14_single, 16_mclp, etc.) ---
+                single_stopped = False
+                try:
+                    df_result = pd.read_excel(single_result_path, sheet_name="Ozet")
+                    df_cov = pd.read_excel(single_result_path, sheet_name="Mahalle_Kapsama")
+                except Exception:
+                    # Try MCLP-style file (just location columns)
+                    try:
+                        df_loc = pd.read_excel(single_result_path)
+                        if "S_No" in df_loc.columns and "Alan_Adi" in df_loc.columns:
+                            st.markdown(f"**Seçilen Konteyner Sayısı:** {len(df_loc)}")
+                            show_cols = [c for c in ["S_No", "Mahalle", "Alan_Adi", "Enlem", "Boylam"] if c in df_loc.columns]
+                            st.dataframe(df_loc[show_cols] if show_cols else df_loc, use_container_width=True, hide_index=True)
+                            single_stopped = True
+                        else:
+                            st.info("Bu modelin sonuç detayları yüklenemiyor. Modeli yeniden çalıştırmayı deneyin.")
+                            single_stopped = True
+                    except Exception:
+                        st.info("Bu modelin sonuç detayları yüklenemiyor. Modeli yeniden çalıştırmayı deneyin.")
+                        single_stopped = True
+                if single_stopped:
+                    st.stop()
+
+                if df_result.empty:
+                    st.info("Henüz çözüm sonuç dosyası mevcut değil.")
+                    st.stop()
+
+                r = df_result.iloc[0]
+                st.markdown("##### 📈 Sonuç Metrikleri")
+                col_v1, col_v2, col_v3, col_v4, col_v5 = st.columns(5)
+                col_v1.metric("Amaç Değeri (Z)", f"{r.get('Z', 'N/A'):.4f}" if pd.notna(r.get('Z', None)) else "N/A")
+                col_v2.metric("Toplam Fayda (RxC)", f"{r.get('RxC', 'N/A'):.4f}" if pd.notna(r.get('RxC', None)) else "N/A")
+                col_v3.metric("Min Kapsama", f"{r.get('min_mahalle_cov', 0)*100:.1f}%" if pd.notna(r.get('min_mahalle_cov', None)) else "N/A")
+                col_v4.metric("Ort. Kapsama", f"{r.get('avg_mahalle_cov', 0)*100:.1f}%" if pd.notna(r.get('avg_mahalle_cov', None)) else "N/A")
+                col_v5.metric("Servis Edilen Mahalle", f"{r.get('n_mahalle_servis', 'N/A')}" if pd.notna(r.get('n_mahalle_servis', None)) else "N/A")
+
+                # Seçilen parseller
+                secilen_str = str(r.get("secilen", ""))
+                secilen_list = [int(s.strip()) for s in secilen_str.split(",") if s.strip().isdigit()]
+                st.markdown(f"**Seçilen Parsel Sayısı:** {len(secilen_list)}")
+
+                # Map for old runs: use ip file if available from files
+                ip_path_single = None
+                cov_path_single = None
+                if files.get("ip_file"):
+                    ip_path_single = MODELS_DIR / files["ip_file"]
+                if not ip_path_single or not ip_path_single.exists():
+                    # Look for any matching ip file
+                    ip_candidates = sorted(MODELS_DIR.glob(f"ip_*{selected_id.split('_b')[0]}*"))
+                    if ip_candidates:
+                        ip_path_single = ip_candidates[-1]
+                if files.get("result_file"):
+                    rf = files["result_file"]
+                    cov_name = rf.replace("single_stage_result_", "coverage_")
+                    cov_path_single = MODELS_DIR / Path(cov_name).name
+                    # For MCLP, the ip file is the _secilenler.xlsx
+                    if "MCLP" in rf:
+                        mclp_ip = rf.replace("_result.xlsx", "_secilenler.xlsx")
+                        mclp_ip_path = MODELS_DIR / Path(mclp_ip).name
+                        if mclp_ip_path.exists():
+                            ip_path_single = mclp_ip_path
+
+                if ip_path_single and ip_path_single.exists():
+                    df_ip = pd.read_excel(ip_path_single)
+                    show_cols = [c for c in ["S_No", "Mahalle", "Alan_Adi", "Enlem", "Boylam", "toplam_mu_saglanan", "p_access_road"] if c in df_ip.columns]
+                    st.dataframe(df_ip[show_cols] if show_cols else df_ip, use_container_width=True, hide_index=True)
+                else:
+                    st.warning("Parsel detay dosyası bulunamadı.")
+
+                # Charts
+                if cov_path_single and cov_path_single.exists():
+                    cov_df = pd.read_excel(cov_path_single)
+                elif not df_cov.empty:
+                    cov_df = df_cov.rename(columns={"C_i": "toplam_kapsama", "risk": "risk_score"})
+                else:
+                    cov_df = pd.DataFrame()
+
+                if not cov_df.empty and "toplam_kapsama" in cov_df.columns:
+                    st.markdown("##### 📊 Mahalle Bazında Kapsama")
+
+                    merged, val_col = _do_merge_coverage(cov_df, params.get("weight_type", "risk"))
+
+                    max_val = merged[val_col].max()
+                    target_vals = merged[val_col] / (max_val + 1e-9)
+
+                    col_chart1, col_chart2 = st.columns(2)
+                    with col_chart1:
+                        st.markdown("##### 📊 Mahalle Kapsama vs İhtiyaç Seviyesi")
+                        temp_chart_path = RESULTS_DIR / "temp_detail_chart.png"
+                        from visualization import plot_coverage_bar
+                        plot_coverage_bar(
+                            merged["mahalle"], merged["toplam_kapsama"], target_vals,
+                            weight_label(params['weight_type']), temp_chart_path,
+                            title=f"Kapsama vs {weight_label(params['weight_type'])}"
                         )
-            
-            # Terminal çıktısı
-            if data.get("stdout"):
-                with st.expander("🖥️ Terminal Çıktısı"):
-                    st.code(data["stdout"])
-                    
-        # ==========================================
-        # RAPOR ÜRETİMİ (SENTEZ)
+                        if temp_chart_path.exists():
+                            st.image(str(temp_chart_path), use_container_width=True)
+                    with col_chart2:
+                        st.markdown("##### 📈 Lorenz Eğrisi (Kapsama Dağılımı Adaleti)")
+                        temp_lorenz_path = RESULTS_DIR / "temp_lorenz_chart.png"
+                        from visualization import plot_lorenz_curve, compute_gini
+                        non_forest_df = merged[~merged["mahalle_norm"].isin(["SALGAMLI DEVLET ORMANI", "TEFERRUC TEPE ORMANI"])]
+                        g_coef = compute_gini(non_forest_df["toplam_kapsama"].values)
+                        plot_lorenz_curve(
+                            non_forest_df["toplam_kapsama"].values, temp_lorenz_path,
+                            title=f"Lorenz Eğrisi (Gini: {g_coef:.3f})"
+                        )
+                        if temp_lorenz_path.exists():
+                            st.image(str(temp_lorenz_path), use_container_width=True)
+
+                # For the rest of the code (map, radar) — set dummy values so it doesn't crash
+                combo_options = []
+                selected_combo = "Tek Sonuç"
+                vname = ""
+                mcdm_sel = ""
+                scen_sel = ""
+                variant_paths = {"ip": ip_path_single or Path("__nonexistent__"), "coverage": cov_path_single or Path("__nonexistent__")}
+                ip_path = variant_paths["ip"]
+                cov_path = variant_paths["coverage"]
+
+            # RAPOR ÜRETİMİ (SENTEZ)
         # ==========================================
         st.markdown("---")
         st.markdown("### 📝 Final Rapor Üretimi (Tüm Çözümlerin Sentezi)")
@@ -1130,37 +1139,11 @@ with tab_compare:
     st.header("⚖️ Çoklu Karşılaştırma (Multi-Compare)")
     st.markdown("Farklı bütçe, model ve senaryoların amaç fonksiyonu (Z) değerlerini ve kapsama oranlarını yan yana kıyaslayın.")
     
-    meta_files = sorted(MODELS_DIR.glob("*_metadata.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+    df_meta, meta_raw = _load_all_metadata()
     
-    if not meta_files:
+    if df_meta.empty:
         st.info("📭 Henüz çalıştırılmış sonuç bulunamadı. Deney Tasarımı sekmesinden bir model çalıştırın.")
     else:
-        # Load all metadatas
-        meta_records = []
-        meta_raw = {}
-        for mf in meta_files:
-            with open(mf, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            p = data["parameters"]
-            label = (f"{p.get('model_label', 'IP')} | K={p['k_total']} | {weight_label(p['weight_type'])} | "
-                     f"β={p['beta']} | {p.get('scenario_tag','?')} | {data['timestamp']}")
-            meta_records.append({
-                "Etiket": label,
-                "Run_ID": data["run_id"],
-                "Tarih": data["timestamp"],
-                "Model": p.get("model_label", "Ana IP"),
-                "Toplam Konteyner Sayısı": p["k_total"],
-                "Hedef": weight_label(p["weight_type"]),
-                "Beta": p["beta"],
-                "Sigma": p["sigma"],
-                "Korunan Mevcut Konteyner Sayısı": len(p["kept_mevcut"]),
-                "Zorunlu Yeni Aday Lokasyon Sayısı": len(p.get("fixed_aday", [])),
-                "Senaryo": translate_scenario(p.get("scenario_tag", "?"))
-            })
-            meta_raw[data["run_id"]] = data
-            
-        df_meta = pd.DataFrame(meta_records)
-        
         # Filtreleme Seçenekleri (Multi-Compare için)
         with st.expander("🔍 Karşılaştırma Listesini Filtrele", expanded=False):
             col_cf1, col_cf2 = st.columns(2)
@@ -1466,8 +1449,7 @@ with tab_sensitivity:
             col_g4.metric("Ortalama Kapsama", f"{rdata['avg_cov']*100:.1f}%")
             
             # İnteraktif Grafikler
-
-
+            col_p1, col_p2 = st.columns(2)
 
             with col_p1:
                 # Sabit K için beta değişimi
