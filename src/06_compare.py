@@ -63,7 +63,7 @@ def mcdm_agreement(mcdm: dict[str, pd.DataFrame]) -> pd.DataFrame:
         
         # 2. TOPSIS MinMax vs PROMETHEE
         x2 = t[f"CC_{s}_MinMax"]
-        y2 = p[f"phi_{s}"]
+        y2 = p[f"phi01_{s}"]
         common = x2.index.intersection(y2.index)
         corr_tp = float(np.corrcoef(x2.loc[common], y2.loc[common])[0, 1])
         t10_p = set(y2.sort_values(ascending=False).head(10).index)
@@ -103,7 +103,7 @@ def plot_mcdm_scatter(mcdm: dict[str, pd.DataFrame], agreement: pd.DataFrame) ->
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
     for ax, s in zip(axes, senaryolar):
         t = mcdm["TOPSIS"].set_index("S_No")[f"CC_{s}_MinMax"]
-        p = mcdm["PROMETHEE"].set_index("S_No")[f"phi_{s}"]
+        p = mcdm["PROMETHEE"].set_index("S_No")[f"phi01_{s}"]
         common = t.index.intersection(p.index)
         ax.scatter(t.loc[common], p.loc[common], s=14, alpha=0.65, color="#2ca02c")
         ax.set_xlabel("TOPSIS CC (MinMax)")

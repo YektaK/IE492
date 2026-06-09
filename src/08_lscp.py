@@ -17,7 +17,7 @@ import numpy as np
 import pulp
 
 # Central Config & Solver Core import
-from config import logger
+from config import logger, COVERAGE_THRESHOLD, MAHALLE_COUNT
 from solver_core import get_solver
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -28,7 +28,7 @@ RES  = ROOT / "results"
 OUT  = ROOT / "results" / "lscp"
 OUT.mkdir(parents=True, exist_ok=True)
 
-CRITICAL_MU = 0.50
+CRITICAL_MU = COVERAGE_THRESHOLD
 
 
 def load_mu(sigma: str) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -152,7 +152,7 @@ def main():
             mev_cov[mh] = 0.0
         logger.info(f"  No-mevcut mod: mevcut konteyner katkilari sifirlandi")
 
-    logger.info(f"  Mevcut konteyner Q_i-scaled mu toplami (15 mahalle):")
+    logger.info(f"  Mevcut konteyner Q_i-scaled mu toplami ({MAHALLE_COUNT} mahalle):")
     for mh, v in mev_cov.items():
         logger.info(f"    {mh}: {v:.4f}")
 
@@ -169,7 +169,7 @@ def main():
         eksik = [mh for mh, v in mev_cov.items() if v < CRITICAL_MU]
         logger.info(f"\n  Esik altinda kalan mahalleler: {eksik}")
 
-        res = solve_lscp(aday_mu, mev_cov, Q_i_dict=Q_i_dict, K_min=1, K_max=15)
+        res = solve_lscp(aday_mu, mev_cov, Q_i_dict=Q_i_dict, K_min=1, K_max=MAHALLE_COUNT)
         out_data = [{
             "K_min": res["K_min"],
             "status": res["status"],

@@ -15,8 +15,11 @@ import seaborn as sns
 from pathlib import Path
 from config import norm_mahalle
 
-# Plot style
-plt.style.use("seaborn-v0_8-whitegrid")
+# Plot style — seaborn-v0_8-* deprecated in seaborn >= 0.12
+try:
+    plt.style.use("seaborn-v0_8-whitegrid")
+except ValueError:
+    plt.style.use("seaborn-whitegrid")
 sns.set_context("paper", font_scale=1.2)
 
 def get_color(val: float) -> str:

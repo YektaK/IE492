@@ -27,8 +27,9 @@ from solver_core import dict_to_matrix, add_base_constraints, get_solver
 OUT  = RES / "single_stage"
 OUT.mkdir(parents=True, exist_ok=True)
 
-ALPHA = 0.20
-L_THRESH = 0.50
+from config import EQUITY_ALPHA, COVERAGE_THRESHOLD
+ALPHA = EQUITY_ALPHA
+L_THRESH = COVERAGE_THRESHOLD
 
 
 def main(SCENARIO="A", SIGMA="800", K_TOTAL=20, BETA=0.30, TRUNCATE=0.0, WEIGHT_TYPE="risk", KEPT_MEVCUT=None, FIXED_ADAY=None, MCDM_METHOD="TOPSIS", MCDM_FOCUS="Baseline"):

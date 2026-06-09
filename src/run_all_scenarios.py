@@ -20,12 +20,12 @@ import sys
 import time
 from pathlib import Path
 
-from scenario_utils import fuzzy_coverage_paths
-sys.path.insert(0, str(SRC))
-from config import get_mevcut_indices
-
 SRC = Path(__file__).resolve().parent
 ROOT = SRC.parent
+
+sys.path.insert(0, str(SRC))
+from scenario_utils import fuzzy_coverage_paths
+from config import get_mevcut_indices
 CONFIG_FILE = ROOT / "experiments_config.json"
 STEPS_PRIORITY = {
     "05_ip": SRC / "05_ip.py",

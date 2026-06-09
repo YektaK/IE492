@@ -9,6 +9,7 @@ from typing import Any
 
 import pulp
 import numpy as np
+from config import COVERAGE_THRESHOLD
 
 def get_solver(time_limit: int = 30, msg: int = 0) -> pulp.LpSolver:
     from config import logger
@@ -61,4 +62,4 @@ def add_base_constraints(
             adaylar_i = [j for j, idx in enumerate(aday_mah_idx) if idx == i]
             prob += pulp.lpSum(X[j] for j in adaylar_i) + mevcut_counts[i] >= 1
         if risk_prop:
-            prob += coverage[i] >= 0.50 * R_i[i]
+            prob += coverage[i] >= COVERAGE_THRESHOLD * R_i[i]

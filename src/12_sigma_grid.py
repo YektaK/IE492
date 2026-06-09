@@ -15,6 +15,7 @@ import numpy as np
 import pulp
 from config import logger
 from solver_core import get_solver
+from scenario_utils import haversine_m
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "processed"
@@ -27,22 +28,13 @@ BETA = 0.30
 SIGMAS = [400, 600, 800, 1000, 1200]
 
 
-def haversine(lat1, lon1, lat2, lon2) -> float:
-    R = 6371000
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
-    a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
-    return 2 * R * math.asin(math.sqrt(a))
-
-
 def compute_mu(coords_a, coords_b, sigma):
     """coords_a: [(lat,lon)], coords_b: [(lat,lon)]; mu[a,b] = exp(-d^2/(2s^2))"""
     n, m = len(coords_a), len(coords_b)
     mu = np.zeros((n, m))
     for i, (la1, lo1) in enumerate(coords_a):
         for j, (la2, lo2) in enumerate(coords_b):
-            d = haversine(la1, lo1, la2, lo2)
+            d = haversine_m(la1, lo1, la2, lo2)
             mu[i, j] = math.exp(-(d ** 2) / (2 * sigma ** 2))
     return mu
 

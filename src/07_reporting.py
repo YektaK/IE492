@@ -45,7 +45,10 @@ DOC = ROOT / "docs" / "rapor"
 for d in [OUT, FIG, CHARTS, DOC]:
     d.mkdir(parents=True, exist_ok=True)
 
-plt.style.use("seaborn-v0_8-whitegrid")
+try:
+    plt.style.use("seaborn-v0_8-whitegrid")
+except ValueError:
+    plt.style.use("seaborn-whitegrid")
 sns.set_context("paper", font_scale=1.2)
 
 
@@ -159,7 +162,8 @@ def plot_mcdm_heatmap(master: pd.DataFrame) -> Path:
     pivot = master.groupby(["mcdm", "senaryo"])["Z_total"].max().reset_index()
     try:
         hm = pivot.pivot(index="mcdm", columns="senaryo", values="Z_total")
-    except Exception:
+    except Exception as e:
+        print(f"  [!] MCDM heatmap pivot failed: {e}")
         return FIG / "mcdm_heatmap.png"
 
     fig, ax = plt.subplots(figsize=(10, 6))

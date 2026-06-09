@@ -28,18 +28,10 @@ from config import norm_mahalle, DATA_DIR as PROCESSED, RESULTS_DIR
 FUZZY_COV_DIR = RESULTS_DIR / "fuzzy_coverage"
 FUZZY_COV_DIR.mkdir(parents=True, exist_ok=True)
 
+from scenario_utils import haversine_m
+
 TRUNCATION_THRESHOLD = 0.15
 CORE_DISTANCE = 300.0  # Ilk 300 metre tam kapsama
-
-def haversine_m(lat1, lon1, lat2, lon2):
-    R = 6_371_000.0
-    p1 = np.radians(lat1)
-    p2 = np.radians(lat2)
-    dp = np.radians(lat2 - lat1)
-    dl = np.radians(lon2 - lon1)
-    a = np.sin(dp / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
-    return 2 * R * np.arcsin(np.sqrt(a))
-
 
 def load_coverage_inputs():
     print("[1/5] Veri okunuyor...")

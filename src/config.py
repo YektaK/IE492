@@ -12,6 +12,14 @@ except Exception:
 
 # Proje Kök Dizini ve Klasör Yapısı
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# Yaygın sabitler
+MAHALLE_COUNT = 15
+COVERAGE_THRESHOLD = 0.50
+TRUNCATION_THRESHOLD = 0.15
+DEFAULT_BETA = 0.30
+EQUITY_ALPHA = 0.20
+EARTH_RADIUS = 6_371_000.0
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 RESULTS_DIR = PROJECT_ROOT / "results"
 MODELS_DIR = RESULTS_DIR / "models"
@@ -66,6 +74,10 @@ def job_logger(job: dict | None = None) -> JobLoggerAdapter:
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 MAPS_DIR.mkdir(parents=True, exist_ok=True)
 CHARTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# completed_jobs_log.json varsayılan olarak oluştur
+if not COMPLETED_JOBS_FILE.exists():
+    COMPLETED_JOBS_FILE.write_text("[]", encoding="utf-8")
 
 def get_mevcut_indices() -> list[int]:
     """Mevcut konteyner sayısını mevcut_12.xlsx'ten okuyarak index listesi döndürür."""

@@ -18,6 +18,7 @@ import pandas as pd
 
 import config
 from config import PROJECT_ROOT, DATA_DIR as PROCESSED
+from scenario_utils import haversine_m
 
 # ---------------------------------------------------------------------------
 # 0) YOL TANIMLARI (config'den alinmayan, sadece bu script'e ozel)
@@ -201,15 +202,6 @@ print(f"  C2_lojistik: mean={adaylar['C2_lojistik'].mean():.3f}, "
       f"max={adaylar['C2_lojistik'].max():.3f}")
 
 # C3: bosluk mesafesi (en yakin mevcut konteynere metre)
-def haversine_m(lat1, lon1, lat2, lon2):
-    R = 6_371_000.0
-    p1, p2 = np.radians(lat1), np.radians(lat2)
-    dp = np.radians(lat2 - lat1)
-    dl = np.radians(lon2 - lon1)
-    a = np.sin(dp / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
-    return 2 * R * np.arcsin(np.sqrt(a))
-
-
 mesafeler = np.zeros(len(adaylar))
 for i, row in adaylar.iterrows():
     d = haversine_m(

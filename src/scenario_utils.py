@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from config import MAHALLE_COUNT, EARTH_RADIUS
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCENARIOS_FILE = PROJECT_ROOT / "data" / "scenarios" / "scenarios.xlsx"
@@ -29,7 +30,7 @@ def load_q_vector(scenario: str = "A", mahalleler: list[str] | None = None) -> n
     if kod == "A":
         if mahalleler is not None:
             return np.ones(len(mahalleler), dtype=float)
-        return np.ones(15, dtype=float)
+        return np.ones(MAHALLE_COUNT, dtype=float)
 
     if kod == "B":
         qi_path = FUZZY_COV_DIR / "Q_i_vector.xlsx"
@@ -107,7 +108,7 @@ def load_mcdm_scores() -> dict[str, dict[str, np.ndarray]]:
 
 
 def haversine_m(lat1, lon1, lat2, lon2) -> float:
-    R = 6_371_000.0
+    R = EARTH_RADIUS
     p1, p2 = np.radians(lat1), np.radians(lat2)
     dp = np.radians(lat2 - lat1)
     dl = np.radians(lon2 - lon1)

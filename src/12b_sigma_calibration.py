@@ -13,21 +13,10 @@ import pandas as pd
 
 import config
 from config import DATA_DIR as PROCESSED, RESULTS_DIR
+from scenario_utils import haversine_m
 
 FUZZY_COV_DIR = RESULTS_DIR / "fuzzy_coverage"
 FUZZY_COV_DIR.mkdir(parents=True, exist_ok=True)
-
-# ---------------------------------------------------------------------------
-# HAVERSINE MESAFE
-# ---------------------------------------------------------------------------
-def haversine_m(lat1, lon1, lat2, lon2):
-    R = 6_371_000.0
-    p1 = np.radians(lat1)
-    p2 = np.radians(lat2)
-    dp = np.radians(lat2 - lat1)
-    dl = np.radians(lon2 - lon1)
-    a = np.sin(dp/2)**2 + np.cos(p1)*np.cos(p2)*np.sin(dl/2)**2
-    return 2 * R * np.arcsin(np.sqrt(a))
 
 def norm_mahalle(s: str) -> str:
     if not isinstance(s, str): return ""
